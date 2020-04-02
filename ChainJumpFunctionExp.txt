@@ -1,0 +1,20 @@
+LONCATAN BERUNTUN
+
+Fungsi:
+= bisaMain --> Untuk mendapatkan langkah geser / loncat yang bisa diambil
+
+== loncatanPlus 
+---> Menerima loncatan pertama dari bisaMain()
+---> Untuk cari loncatan2 selanjutnya yang bisa diambil
+---> Output dalam bentuk dictionary, isinya kurang lebih { layer: { kolom: {"xy":(x1,y1), "parent":(x2,y2) }}}
+-----> Layer = loncatan tingkat berapa
+-----> kolom = kemungkinan loncatan ke berapa loncatan di tingkat tertentu
+-----> xy = nilai x dan y nya
+-----> parent = parentnya (if any)
+
+== sortLoncat
+---> Menerima dictionary loncatan dari loncatanPlus()
+---> Untuk mendapat urutan logis loncatan2 yang bisa diambil
+---> Udah support kalau mau berhenti di tengah, misal chain jump nya 1 2 3, maka outputnya kurang lebih [1, [1,2], [1,2,3]]
+---> Output dalam bentuk list
+
