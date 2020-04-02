@@ -12,22 +12,24 @@ import time
 N_KOTAK = 10
 N_BIDAK = 15
 
-PAPAN_10_15x2 = [[101,102,104,107,111,  0,  0,  0,  0,  0],
-               [103,105,108,112,  0,  0,  0,  0,  0,  0],
-               [106,109,113,  0,  0,  0,  0,  0,  0,  0],
-               [110,114,  0,  0,  0,  0,  0,  0,  0,  0],
-               [115,  0,  0,  0,  0,  0,  0,  0,  0,  0],
-               [  0,  0,  0,  0,  0,  0,  0,  0,  0,215],
-               [  0,  0,  0,  0,  0,  0,  0,  0,214,210],
-               [  0,  0,  0,  0,  0,  0,  0,213,209,206],
-               [  0,  0,  0,  0,  0,  0,212,208,205,203],
-               [  0,  0,  0,  0,  0,211,207,204,202,201]]
+PAPAN_10_15x2 = [
+              # 0   1   2    3   4    5  6   7    8  9
+               [101,102,104,107,111,  0,  0,  0,  0,  0], #0
+               [103,105,108,112,  0,  0,  0,  0,  0,  0], #1
+               [106,109,113,  0,  0,  0,  0,  0,  0,  0], #2
+               [110,114,  0,  0,  0,  0,  0,  0,  0,  0], #3
+               [115,  0,  0,  0,  0,  0,  0,  0,  0,  0], #4
+               [  0,  0,  0,  0,  0,  0,  0,  0,  0,215], #5
+               [  0,  0,  0,  0,  0,  0,  0,  0,214,210], #6
+               [  0,  0,  0,  0,  0,  0,  0,213,209,206], #7
+               [  0,  0,  0,  0,  0,  0,212,208,205,203], #8
+               [  0,  0,  0,  0,  0,211,207,204,202,201]] #9
 
-ASAL_10_15_0=[(0,0),(0,1),(1,0),(0,2),(1,1),(2,0),(0,3),(1,2),(2,1),(3,0),(0,4),(1,3),(2,2),(3,1),(4,0)]
+ASAL_10_15_0=[(0,0),(0,1),(1,0),(0,2),(1,5),(2,0),(0,3),(1,2),(2,1),(3,0),(0,4),(1,3),(2,2),(3,1),(4,0)]
 ASAL_10_15_1=[(9,9),(9,8),(8,9),(9,7),(8,8),(7,9),(9,6),(8,7),(7,8),(6,9),(9,5),(8,6),(7,7),(6,8),(5,9)]
-ASAL_10_15=[ASAL_10_15_0, ASAL_10_15_1] 
+ASAL_10_15=[ASAL_10_15_0, ASAL_10_15_1]
 
-class HalmaModel:   
+class HalmaModel:
     # jenis aksi
     A_GESER = 0
     A_LONCAT = 1
@@ -43,7 +45,7 @@ class HalmaModel:
     JATAH_WAKTU = 10.0
 
     # private variable, tak bisa diakses oleh pemain
-    __papan = []   
+    __papan = []
     __nkotak = 0
     __npemain = 0
     __pemain= []
@@ -89,11 +91,11 @@ class HalmaModel:
 
     # mengembalikan bidak di posisi x,y
     def getJumlahBidak(self):
-        return self.__nbidak        
+        return self.__nbidak
 
     # mengembalikan bidak di posisi x,y
     def getBidak(self, x, y):
-        return self.__papan[x][y]        
+        return self.__papan[x][y]
 
     # mengembalikan semua bidak pemain tertentu
     # ini lama, jadi sebaiknya jangan dipanggil sering-sering
@@ -106,11 +108,11 @@ class HalmaModel:
                 if (bxy == bp):
                     bidak.append((x,y))
         return bidak
-    
+
 
     def getPapan(self):
         return self.__papan.copy()
-    
+
     def getWaktu(self):
         return time.process_time()
 
@@ -120,13 +122,13 @@ class HalmaModel:
     def getSisaWaktu(self):
         ip = self.__giliran
         return self.__waktu[ip] - (time.process_time()-self.__mulai)
-                            
+
     # return true jika x,y masih dalam papan
     def dalamPapan(self, x2, y2):
         if (x2 < 0) or (x2 >= self.__nkotak):
             return False
         if (y2 < 0) or (y2 >= self.__nkotak):
-            return False        
+            return False
         return True
 
     # return true jika x,y dalam area tujuan
@@ -135,7 +137,7 @@ class HalmaModel:
             if (xy[0] == x) and (xy[1]==y):
                 return True
         return False
-    
+
     # return true jika boleh geser dr x1,y1 ke x2,y2
     def bolehGeser(self, ip, x1, y1, x2, y2):
         if not self.dalamPapan(x2, y2):
@@ -185,7 +187,7 @@ class HalmaModel:
         if (ip != self.__giliran):
             return self.S_ILLEGAL
         if not self.bolehGeser(ip, x1, y1, x2, y2):
-            return self.S_ILLEGAL            
+            return self.S_ILLEGAL
         self.__papan[x2][y2] = self.__papan[x1][y1]
         self.__papan[x1][y1] = 0
         return self.S_OK
@@ -205,7 +207,7 @@ class HalmaModel:
 
 
     # periksa apakah sudah berakhir
-    # return True jika sudah berakhir 
+    # return True jika sudah berakhir
     def akhir(self):
         bp = self.__giliran+1
         for xy in self.__tujuan[self.__giliran]:
@@ -213,14 +215,12 @@ class HalmaModel:
             if (bxy != bp):
                 return False
         return True
-    
+
     # ganti pemain berikutnya, sambil periksa waktu
     # return True jika pemain lama masih punya jatah waktu
     def ganti(self, selesai):
-        self.__waktu[self.__giliran] += self.JATAH_WAKTU - (selesai - self.__mulai) 
+        self.__waktu[self.__giliran] += self.JATAH_WAKTU - (selesai - self.__mulai)
         if self.__waktu[self.__giliran] < 0:
             return self.S_TIMEOUT
         self.__giliran = (self.__giliran + 1) % self.__npemain
         return self.S_OK
-    
-    
