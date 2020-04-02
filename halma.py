@@ -28,10 +28,11 @@ def halma(p1, p2):
                 valid = model.mainLoncat(asal[0], asal[1], xy[0], xy[1])
                 if (valid == model.S_OK):
                     layar.tampilLoncat(model, asal[0], asal[1], xy[0], xy[1])
+                    asal = xy # usulan solusi BUG#1
         elif (aksi == model.A_GESER):
             valid = model.mainGeser(asal[0], asal[1], tujuan[0][0], tujuan[0][1])
             if (valid == model.S_OK):
-                layar.tampilGeser(model, asal[0], asal[1], tujuan[0][0], tujuan[0][1])        
+                layar.tampilGeser(model, asal[0], asal[1], tujuan[0][0], tujuan[0][1])
         else:
             layar.tampilHenti(model)
         if model.akhir():
@@ -40,11 +41,9 @@ def halma(p1, p2):
         if valid:
             layar.tampilGanti(model)
     layar.tampilAkhir(model, valid)
-        
+
 
 p1=HalmaPlayer("Pintar")
 p2=HalmaPlayer("Cerdas")
 
 halma(p1, p2)
-
-
