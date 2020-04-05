@@ -15,7 +15,8 @@ class HalmaPlayer02:
     def __init__(self, nama):
         self.nama = nama
         self._ply = 3
-        self._maxbranch = 50
+        self._maxbreadth = 500
+        self._maxbranch = 10 #max branch dalam satu ply
         self._loncat = 0
         self._geser = 0
         self._henti = 0
@@ -239,7 +240,33 @@ class HalmaPlayer02:
                     dict[k1] = {k2: isi}
 
     def evalFunc(self, node, giliran):
-        return 0
+        return random.randint(0,100)
+
+    def cariMax(self, evalScore):
+        score = []
+        max = -9999
+        for i in evalScore:
+            if (evalScore[i]["score"] > max):
+                max = evalScore[i]["score"]
+        #
+        # for i in range(len(evalScore)):
+        #     if (evalScore[i] >= max):
+        #         score.append(evalScore[i])
+        return max
+
+    # Untuk cari value min
+    def cariMin(self, evalScore):
+        score = []
+        min = 9999
+        for i in evalScore:
+            if (evalScore[i]["score"] < min):
+                min = evalScore[i]["score"]
+
+        # for i in range(len(evalScore)):
+        #     if (evalScore[i] == min):
+        #         score.append(evalScore[i])
+        return min
+
 
     def main(self, model):
         time_start = time.process_time()
@@ -255,23 +282,37 @@ class HalmaPlayer02:
         giliran = self.nomor
 
         # search x ply
+# cabang masih belum dapet semua euy
         for i in range(0, self._ply):
             no = 0
             if i % 2 == 0: #MAX
                 giliran = self.nomor
             else: #MIN
                 giliran = 1 - self.nomor
-            for j in range(len(tree[i])):
-                parent = (i,j)
-                cabang = self.cariCabang(tree[i][j]["node"], giliran)
-                # print(parent, '----', cabang, '\r\n')
-                for k in range(len(cabang)):
-                    if no < self._maxbranch:
-                        # parent = (i,j)
-                        isi = {"node": cabang[k][0], "parent": parent, "tujuan": cabang[k][1], "asal": cabang[k][2], "aksi": cabang[k][3]}
-                        self.updateDict(tree, i+1, no, isi)
 
-                        no += 1
+            udah = []
+
+            for j in range(len(tree[i])):
+                no2 = 0
+                kelar = False #milih j dirandom, questionable tapi lur
+                while not kelar:
+                    x = random.randint(0, len(tree[i])-1)
+                    if x not in udah:
+                        parent = (i,x)
+                        cabang = self.cariCabang(tree[i][x]["node"], giliran)
+                        # print(parent, '----', cabang, '\r\n')
+                        for k in range(len(cabang)): #lets only take x child per node
+                            if no < self._maxbreadth:
+                                if no2 < self._maxbranch:
+                                    # parent = (i,j)
+                                    isi = {"node": cabang[k][0], "parent": parent, "tujuan": cabang[k][1], "asal": cabang[k][2], "aksi": cabang[k][3]}
+                                    self.updateDict(tree, i+1, no, isi)
+
+                                    no += 1
+                                    no2 +=1
+                        udah.append(x)
+                        kelar = True
+
 
         # evaluation function
         # print(tree)
@@ -280,6 +321,7 @@ class HalmaPlayer02:
         oldParent = None
         for i in range(len(frontier)):
             parent = frontier[i]["parent"]
+            # print(parent)
             if self._ply % 2 == 1: #ujungnya max
                 giliran = self.nomor
             else:
@@ -296,14 +338,43 @@ class HalmaPlayer02:
             self.updateDict(evalScore, parent[0], parent[1], isi)
 
 
-        # print("hSDf", evalScore)
-
 #  Catatan : Cari loncatan ganda makan waktu buanyakk, enaknya gmn ya?
         # minimax + alpha beta pruning
+        for parent_i in reversed(range(1, self._ply)):
+            n = 0
+            for parent_j in evalScore[parent_i]:
+                parent2 = tree[parent_i][parent_j]["parent"]
+                if parent_i % 2 == 0: #MAX
+                    score = self.cariMax(evalScore[parent_i][parent_j])
+                else:
+                    score = self.cariMin(evalScore[parent_i][parent_j])
 
+                isi = { n: {"i" : parent_j, "score": score } }
+                self.updateDict(evalScore, parent2[0], parent2[1], isi)
+
+                n += 1
+
+        print("hSDf", evalScore)
 
         # move selection
+        pilihan = []
+        for j in evalScore[1]:
+            for n in evalScore[1][j]:
+                if evalScore[1][j][n]["score"] == evalScore[0][0][0]["score"]:
+                    pilihan.append((tree[1][j]["tujuan"], tree[1][j]["asal"], tree[1][j]["aksi"]))
+
 
         print("time taken:", time.process_time() - time_start)
 
         # return
+        if len(pilihan) > 0:
+            pilih = random.randint(0,len(pilihan)-1)
+            print(pilihan[pilih])
+            # print(type(pilihan[pilih][0]) != tuple)
+
+            if pilihan[pilih][2] == model.A_LONCAT:
+                return (pilihan[pilih][0], pilihan[pilih][1], pilihan[pilih][2]) if type(pilihan[pilih][0]) != tuple else ([pilihan[pilih][0]], pilihan[pilih][1], pilihan[pilih][2])
+            else:
+                return [pilihan[pilih][0]], pilihan[pilih][1], pilihan[pilih][2]
+        else:
+            return None, None, model.A_BERHENTI
