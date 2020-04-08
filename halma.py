@@ -7,7 +7,7 @@ Program utama, bekerja sebagai controller
 
 from halma_model import HalmaModel
 from halma_view import HalmaView
-from halma_player_pr import HalmaPlayer02
+from halma_player_02_A import HalmaPlayer02
 
 model = HalmaModel()
 layar = HalmaView()

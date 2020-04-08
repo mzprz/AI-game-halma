@@ -4,19 +4,19 @@ import sys
 import random
 from halma_model import HalmaModel
 
-
+# tambahin kode untuk opsi berhenti masukin ply satu lur (tujuan = asal), biar ikut dicek eval Funct nya
 class HalmaPlayer02:
     nama = "Pemain"
-    deskripsi = "Random Strategy"
-    nomor = 1
-    index = 0
+    deskripsi = "Kelompok 2"
+    # nomor = 1
+    # index = 0
     papan = []
 
     def __init__(self, nama):
         self.nama = nama
         self._ply = 3
-        self._maxbreadth = 500
-        self._maxbranch = 10 #max branch dalam satu ply
+        self._maxbreadth = 300
+        self._maxbranch = 6 #max branch dalam satu ply
         self._loncat = 0
         self._geser = 0
         self._henti = 0
@@ -27,14 +27,13 @@ class HalmaPlayer02:
         self.index = nomor-1
 
     # mengembalikan semua kemungkikan main (geser / loncat) bidak di (x1, y1)
-    def bisaMain(self, model, papan, x1, y1):
+    def bisaMain(self, model, papan, ip, x1, y1):
         geser = []
         loncat = {}
         # loncat_buffer = []
         baris = 0
         kolom = 0
 
-        ip = self.index;
         dTujuan = model.dalamTujuan(ip, x1, y1)
         for a in model.ARAH:
             x2 = x1 + a[0]
@@ -57,7 +56,7 @@ class HalmaPlayer02:
                                     loncat[baris] = { kolom: { "xy": (x3,y3) } }
                                 kolom += 1
         # print("THISDONE")
-        loncat = self.loncatanPlus(model, papan, loncat)
+        loncat = self.loncatanPlus(model, papan, loncat, ip)
         # print("THISDONE")
         # done getting the dictionary i wanted, now i need to sort it
         # to match the format specified
@@ -70,17 +69,16 @@ class HalmaPlayer02:
         # time.sleep(1)
 
         # loncat2 =
+        print("GESER", geser)
+        print("LONCAT", loncat2)
 
         return geser, loncat2
 
-    def loncatanPlus(self, model, papan, loncat):
+    def loncatanPlus(self, model, papan, loncat, ip):
         loncat_buffer = []
         baris = 1
         stopCheck = False
         memory = (0,0)
-
-        ip = self.index;
-
 
         baris = 0
         while stopCheck == False:
@@ -168,8 +166,9 @@ class HalmaPlayer02:
 
     # mensimulasikan next step kalo disi)ilakukan aksi tertentu thd papan
     def nextStep(self, model2, tujuan, asal, aksi, giliran):
-        if model2.getGiliran() != giliran :
+        if model2.getGiliran() != giliran-1 :
             model2.ganti(0)
+        # print("IGLGIGE", giliran-1, model2.getGiliran())
         if (aksi == model2.A_LONCAT):
             # print("ASD",asal, tujuan, aksi)
             for xy in tujuan:
@@ -190,9 +189,13 @@ class HalmaPlayer02:
     def cariCabang(self, model, giliran):
         cabang = []
         papan = model.getPapan()
-        b0 = model.getPosisiBidak(self.index)
+        index = giliran - 1
+        # print(index)
+        b0 = model.getPosisiBidak(index)
+        # print("ASD", b0)
         for b in b0:
-            g, l = self.bisaMain(model, papan, b[0], b[1])
+            # print(b)
+            g, l = self.bisaMain(model, papan, index, b[0], b[1])
             asal = b
 
             udah = []
@@ -240,7 +243,104 @@ class HalmaPlayer02:
                     dict[k1] = {k2: isi}
 
     def evalFunc(self, node, giliran):
-        return random.randint(0,100)
+        score = 0
+        w0 = 0.5
+        w1 = 1
+        w2 = 0.1
+        w3 = 1
+        index = giliran-1
+        ladder03 = self.evalFuncLadder(node,index,0,3)
+        ladder12 = self.evalFuncLadder(node,index,1,2)
+
+        # print("CENTROID = ", self.evalCentroid(node, index))
+        # print("TARGET = ", self.evalFuncTarget(node,index))
+        # print("TARGET2 = ", self.evalFuncTarget(node,1-index))
+        # print("LADDER03 = ", ladder03)
+        # print("LADDER12 = ", ladder12)
+        # print("--------")
+
+        centroid = self.evalCentroid(node, index)
+        score += centroid * w0 if index == 0 else -centroid*w0
+        score += self.evalFuncTarget(node,index) * w1
+        score -= self.evalFuncTarget(node,1-index) * w2
+        score +=  max(ladder03, ladder12) * w3
+
+        return score
+
+    def evalCentroid(self, node, giliran):
+        papan = self.papanBiner(node,giliran,1,0)
+        c = 0
+        # print("AS", papan)
+        for i in range(len(papan)):
+            for j in range(len(papan[i])):
+                if papan[i][j] == 1:
+                    c += j + i
+                    print("i",i,"j",j, "score:", j+i)
+
+        return c
+
+    def papanBiner(self, node, giliran, a, b):
+        papan = node.getPapan()
+        papan_biner = copy.deepcopy(papan)
+
+        for i in range(len(papan)):
+            for j in range(len(papan)):
+                if int(str(papan[i][j])[:1]) == giliran+1:
+                    papan_biner [i][j] = a
+                elif int(str(papan[i][j])[:1]) == 1-giliran + 1:
+                    papan_biner [i][j] = b
+                else:
+                    papan_biner [i][j] = 0
+        return papan_biner
+
+    def evalFuncTarget(self, node, giliran):
+        score = 0
+        papan = node.getPapan()
+
+        for i in range(len(papan)):
+            for j in range(len(papan[i])):
+                if papan[i][j] // 100 == giliran+1:
+                    if node.dalamTujuan(giliran,i,j):
+                        score +=1
+
+        return score
+
+    def buildArmyType(self, no):
+        ladder = [[0]*no for i in range(no)]
+        x = 0
+        for i in range(len(ladder)):
+            for j in range(len(ladder[i])):
+                if i%2==0:
+                    ladder[i][j] = x
+                else:
+                    ladder[i][j] = x+2
+                x = 0 if(x==1) else 1
+        return ladder
+
+    def evalFuncLadder(self, node, giliran, no1, no2):
+        papan = self.papanBiner(node,giliran, 1, 1)
+        no = node.getUkuran()
+        c = [[0]*no for i in range(no)]
+        ladder = self.buildArmyType(no)
+
+        for i in range(len(ladder)):
+            for j in range(len(ladder[i])):
+                if ladder[i][j] == no1 or ladder[i][j] == no2:
+                    if not node.dalamTujuan(0, i, j) and not node.dalamTujuan(1,i,j):
+                        ladder[i][j] = 1
+                else:
+                    ladder[i][j] = 0
+
+        # print(ladder)
+
+        for i in range(len(papan)):
+            for j in range(len(papan[i])):
+                c[i][j] = papan[i][j] & ladder[i][j]
+
+        # print("C", c)
+
+        return sum([sum(c[i]) for i in range(len(c))])
+
 
     def cariMax(self, evalScore):
         score = []
@@ -279,16 +379,18 @@ class HalmaPlayer02:
         evalScore = {}
         tree[0] = {0: {"node": model1 }}
 
-        giliran = self.nomor
+        # giliran = self.nomor
+        index = self.nomor-1
+        # print("GIL",giliran)
 
         # search x ply
 # cabang masih belum dapet semua euy
         for i in range(0, self._ply):
             no = 0
             if i % 2 == 0: #MAX
-                giliran = self.nomor
+                giliran = 1 + index
             else: #MIN
-                giliran = 1 - self.nomor
+                giliran = 1 + 1- index
 
             udah = []
 
@@ -316,6 +418,7 @@ class HalmaPlayer02:
 
         # evaluation function
         # print(tree)
+        # time.sleep(1000)
         frontier = tree[self._ply]
         n = 0
         oldParent = None
@@ -323,9 +426,9 @@ class HalmaPlayer02:
             parent = frontier[i]["parent"]
             # print(parent)
             if self._ply % 2 == 1: #ujungnya max
-                giliran = self.nomor
+                giliran = 1 + index
             else:
-                giliran = 1-self.nomor
+                giliran = 1 + 1-index
 
             if parent != oldParent:
                 oldParent = parent
@@ -338,7 +441,6 @@ class HalmaPlayer02:
             self.updateDict(evalScore, parent[0], parent[1], isi)
 
 
-#  Catatan : Cari loncatan ganda makan waktu buanyakk, enaknya gmn ya?
         # minimax + alpha beta pruning
         for parent_i in reversed(range(1, self._ply)):
             n = 0
@@ -354,7 +456,7 @@ class HalmaPlayer02:
 
                 n += 1
 
-        print("hSDf", evalScore)
+        # print("hSDf", evalScore)
 
         # move selection
         pilihan = []
@@ -367,6 +469,7 @@ class HalmaPlayer02:
         print("time taken:", time.process_time() - time_start)
 
         # return
+        print(pilihan)
         if len(pilihan) > 0:
             pilih = random.randint(0,len(pilihan)-1)
             print(pilihan[pilih])
