@@ -9,7 +9,7 @@ from halma_model import HalmaModel
 from halma_view import HalmaView
 from halma_player_ori import HalmaPlayer
 from halma_player_02_A import HalmaPlayer02
-from halma_player_pr import HalmaPlayer02 as pr
+from halma_player_pr2 import HalmaPlayer02 as pr
 
 model = HalmaModel()
 layar = HalmaView()

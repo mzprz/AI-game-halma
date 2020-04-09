@@ -22,3 +22,16 @@ Jaga tempat tujuan
 
 Evaluation function berdasar perpektif siapa ?
 awalnya index jadi self.index
+
+Kenapa bagusnya kalo jadi player 2 doang yak ? Cek baris 219 , self.index apa index ?
+
+Opening moves are far better when playing as p2. Curiga di itung jaraknya sih
+Gamau masuk ke tujuan euy sebelum ganti stage ?
+
+Engga ding, yang player 03 masih bagusmeskipun sebagai p1. Cek apa yang diubah ya bsk...
+
+How to avoid redundant moves ?
+
+
+_pr2 -> eval func berupa delta dari state sebelumnya
+Score Target di delta in, jadi kalo ada move yang ga bikin nambah tujuan, mending move yang bikin naik centroid

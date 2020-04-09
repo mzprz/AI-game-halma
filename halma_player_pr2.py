@@ -16,11 +16,12 @@ class HalmaPlayer02:
 
     def __init__(self, nama):
         self.nama = nama
-        self._ply = 3
+        self._ply = 2
         self.pilihan = []
         self._childMax = 10
         self.moveCount = 0
         self.stage = 0
+        self.lastScore = 0
 
     def setNomor(self, nomor):
         self.nomor = nomor
@@ -303,7 +304,7 @@ class HalmaPlayer02:
 
         centroid = self.evalCentroid(node, self.index)
         score += centroid * w0 #if index == 1 else -centroid*w0
-        score += self.evalFuncTarget(node,index) * w1
+        score += (self.evalFuncTarget(node,self.index)-self.lastScore) * w1
         # score += self.evalFuncTarget(node,1-index) * w2
         # score +=  max(ladder14, ladder23) * w3
 
@@ -445,6 +446,7 @@ class HalmaPlayer02:
         initPos = self.deepcopy(model)
 
         evalScore = self.minimax(initPos, self._ply, -9999, 9999, True)
+        self.lastScore = evalScore
         print(evalScore)
         print("time taken:", time.process_time() - time_start)
 
@@ -454,6 +456,8 @@ class HalmaPlayer02:
         if len(self.pilihan) > 0:
             pilih = random.randint(0,len(self.pilihan)-1)
             print(self.pilihan[pilih])
+            self.lastScore = self.evalFuncTarget(self.nextStep(initPos, self.pilihan[pilih][0], self.pilihan[pilih][1],self.pilihan[pilih][2],self.index ),self.index)
+            print('ASDD', self.lastScore)
             # print(type(pilihan[pilih][0]) != tuple)
 
             if self.pilihan[pilih][2] == model.A_LONCAT:
