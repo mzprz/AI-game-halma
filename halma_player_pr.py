@@ -4,6 +4,7 @@ import sys
 import _pickle as cPickle
 import random
 import gc
+import math
 
 # tambahin kode untuk opsi berhenti masukin ply satu lur (tujuan = asal), biar ikut dicek eval Funct nya
 class HalmaPlayer02:
@@ -17,7 +18,9 @@ class HalmaPlayer02:
         self.nama = nama
         self._ply = 3
         self.pilihan = []
-        self._childMax = 25
+        self._childMax = 10
+        self.moveCount = 0
+        self.stage = 0
 
     def setNomor(self, nomor):
         self.nomor = nomor
@@ -188,46 +191,91 @@ class HalmaPlayer02:
         return model2
 
     # untuk cari cabang suatu node
-    def cariCabang(self, model, maxPlayer):
+    def cariCabang(self, model, maxPlayer, ketat):
         cabang = []
         papan = model.getPapan()
         index = self.index if maxPlayer else 1-self.index
         # print(index)
         # print("time taken:", time.process_time() - time_start)
         b0 = model.getPosisiBidak(index)
+        # print("awal",b0)
+
+        random.shuffle(b0)
+
+        # print("akhir",b0)
         # print("ASD", b0)
         for b in b0:
-            # print(b)
+            if self.stage < 1:
+                if ketat and not model.dalamTujuan(1-index, b[0], b[1]):
+                    continue
+
+            # if ketat and self.stage == 2:
+            #     if model.dalamTujuan(index, b[0], b[1]):
+            #         continue
+
             g, l = self.bisaMain(model, papan, index, b[0], b[1])
             asal = b
+
+            x = model.getUkuran() if index==0 else 0
 
             for i in range(len(l)):
                 node = self.deepcopy(model)
                 aksi = model.A_LONCAT
                 tujuan = l[i] if type(l[i]) != tuple else [l[i]]
-                nextNode = self.nextStep(node, tujuan, asal, aksi, index)
+                if ketat:
+                    if self.stage > 0: #jangan balik ke kandang
+                        if model.dalamTujuan(1-index, tujuan[0][0], tujuan[0][1]):
+                            continue
+                    if self.stage < 2: #ambil gerakan yang maju terus
+                        asalCent = math.sqrt((x-asal[0])**2 + (x-asal[1])**2)
+                        tujuanCent =  math.sqrt((x-tujuan[0][0])**2 + (x-tujuan[0][1])**2)
+                        if asalCent > tujuanCent:
+                            nextNode = self.nextStep(node, tujuan, asal, aksi, index)
+                            cabang.append((nextNode, tujuan, asal, aksi))
+                    if self.stage == 2:
+                        if model.dalamTujuan(index, asal[0], asal[1]) and not model.dalamTujuan(index, tujuan[0][0], tujuan[0][1]):
+                            continue
 
-                cabang.append((nextNode, tujuan, asal, aksi))
+                else:
+                    nextNode = self.nextStep(node, tujuan, asal, aksi, index)
+                    cabang.append((nextNode, tujuan, asal, aksi))
 
             for i in range(len(g)):
                 node = self.deepcopy(model)
                 aksi = model.A_GESER
                 tujuan = g[i]
-                nextNode = self.nextStep(node, tujuan, asal, aksi, index)
 
-                cabang.append((nextNode, tujuan, asal, aksi))
+                if ketat:
+                    if self.stage > 0: #jangan balik ke kandang
+                        if model.dalamTujuan(1-index, tujuan[0], tujuan[1]):
+                            continue
+                    if self.stage < 2: #unutk memastikan gerakannya maju terus
+                        asalCent = math.sqrt((x-asal[0])**2 + (x-asal[1])**2)
+                        tujuanCent =  math.sqrt((x-tujuan[0])**2 + (x-tujuan[1])**2)
+                        if asalCent > tujuanCent:
+                            nextNode = self.nextStep(node, tujuan, asal, aksi, index)
+                            cabang.append((nextNode, tujuan, asal, aksi))
+                    if self.stage == 2:
+                        if model.dalamTujuan(index, asal[0], asal[1]) and model.dalamTujuan(index, tujuan[0], tujuan[1]):
+                            continue
+                else:
+                    nextNode = self.nextStep(node, tujuan, asal, aksi, index)
+                    cabang.append((nextNode, tujuan, asal, aksi))
+
+        if cabang == []:
+            cabang = self.cariCabang(model, maxPlayer, False) #rule ketat unless ga nemu cabang
 
         return cabang
 
     def evalFunc(self, node, maxPlayer):
         score = 0
-        w0 = 0.1
-        w1 = 1
-        w2 = 0.1
-        w3 = 1
+        w0 = -0.7
+        w1 = 10
+        w2 = -0.1
+        w3 = 2
         index = self.index if maxPlayer else 1-self.index
-        ladder03 = self.evalFuncLadder(node,index,0,3)
-        ladder12 = 0 #self.evalFuncLadder(node,index,1,2)
+        ladder14 = self.evalFuncLadder(node,index,1,4)
+        ladder23 = self.evalFuncLadder(node,index,2,3)
 
         # print("CENTROID = ", self.evalCentroid(node, index))
         # print("TARGET = ", self.evalFuncTarget(node,index))
@@ -236,11 +284,11 @@ class HalmaPlayer02:
         # print("LADDER12 = ", ladder12)
         # print("--------")
 
-        centroid = self.evalCentroid(node, index)
-        score += centroid * w0 if index == 1 else -centroid*w0
-        score += self.evalFuncTarget(node,index) * w1
-        score -= self.evalFuncTarget(node,1-index) * w2
-        score +=  max(ladder03, ladder12) * w3
+        centroid = self.evalCentroid(node, self.index) #ini awalnya index doang
+        score += centroid * w0 #if index == 1 else -centroid*w0
+        score += self.evalFuncTarget(node,self.index) * w1
+        # score += self.evalFuncTarget(node,1-index) * w2
+        # score +=  max(ladder14, ladder23) * w3
 
         # print("Score:", score)
 
@@ -249,11 +297,16 @@ class HalmaPlayer02:
     def evalCentroid(self, node, giliran):
         papan = self.papanBiner(node,giliran,1,0)
         c = 0
+        if giliran == 0:
+            x = node.getUkuran()
+        else:
+            x= 0
         # print("AS", papan)
         for i in range(len(papan)):
             for j in range(len(papan[i])):
                 if papan[i][j] == 1:
-                    c += node.getUkuran()-j-i
+                    c += math.sqrt((x-j)**2 + (x-i)**2)
+                    # c += node.getUkuran()-i-j
                     # print("i",i,"j",j, "score:", j+i)
 
         return c
@@ -286,14 +339,14 @@ class HalmaPlayer02:
 
     def buildArmyType(self, no):
         ladder = [[0]*no for i in range(no)]
-        x = 0
+        x = 1
         for i in range(len(ladder)):
             for j in range(len(ladder[i])):
                 if i%2==0:
                     ladder[i][j] = x
                 else:
                     ladder[i][j] = x+2
-                x = 0 if(x==1) else 1
+                x = 1 if(x==2) else 2
         return ladder
 
     def evalFuncLadder(self, node, giliran, no1, no2):
@@ -307,6 +360,8 @@ class HalmaPlayer02:
                 if ladder[i][j] == no1 or ladder[i][j] == no2:
                     if not node.dalamTujuan(0, i, j) and not node.dalamTujuan(1,i,j):
                         ladder[i][j] = 1
+                    else:
+                        ladder[i][j] = 0
                 else:
                     ladder[i][j] = 0
 
@@ -326,15 +381,15 @@ class HalmaPlayer02:
 
         if maxPlayer:
             maxEval = -9999
-            cabang = self.cariCabang(position, True)
+            cabang = self.cariCabang(position, True, True)
             childCount = 0
             for child in cabang:
                 if childCount < self._childMax:
                     eval = self.minimax(child[0], depth-1, alpha, beta, False)
                     # these two lines is somehow the problem
-                    if depth == self._ply and maxEval >= eval:
+                    if depth == self._ply and eval >= maxEval:
                         gc.disable()
-                        self.pilihan.append((child[1],child[2],child[3])) #awalnya append diganti =
+                        self.pilihan.append((child[1],child[2],child[3]))
 
                     maxEval = max(maxEval,eval)
                     alpha = max(alpha, eval)
@@ -344,7 +399,7 @@ class HalmaPlayer02:
             return maxEval
         else:
             minEval = 9999
-            cabang = self.cariCabang(position, False)
+            cabang = self.cariCabang(position, False, True)
             childCount = 0
             for child in cabang:
                 if childCount < self._childMax:
@@ -360,6 +415,12 @@ class HalmaPlayer02:
         return cPickle.loads(cPickle.dumps(model, -1))
 
     def main(self, model):
+        if self.moveCount > 20:
+            self.stage +=1
+            self.moveCount = 0
+            if self.stage > 2:
+                self.stage = 2
+
         time_start = time.process_time()
 
         #initialization
@@ -369,7 +430,9 @@ class HalmaPlayer02:
         evalScore = self.minimax(initPos, self._ply, -9999, 9999, True)
         print(evalScore)
         print("time taken:", time.process_time() - time_start)
-        #
+
+        self.moveCount += 1
+
         print(self.pilihan)
         if len(self.pilihan) > 0:
             pilih = random.randint(0,len(self.pilihan)-1)
@@ -381,4 +444,5 @@ class HalmaPlayer02:
             else:
                 return [self.pilihan[pilih][0]], self.pilihan[pilih][1], self.pilihan[pilih][2]
         else:
+            # time.sleep(100)
             return None, None, model.A_BERHENTI

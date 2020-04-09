@@ -7,3 +7,18 @@ Idea for Halma
 -- Penalti kalo pindah dari tempat tujuan
 -- penalti kalo pindah ke tempat asal
 -- Dalam satu cabang mendalam ga boleh balik lagi (pas di caricabang)
+
+
+Di ori udah ada fitur abaikan kalo langkah nya balik ke asal
+
+Kalau jadi player dua evaluasinya dari bawah ke atas biar ga 15 terus
+
+
+Stage 0 :
+keluar dari kandang
+
+Stage 2:
+Jaga tempat tujuan
+
+Evaluation function berdasar perpektif siapa ?
+awalnya index jadi self.index
