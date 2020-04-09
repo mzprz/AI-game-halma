@@ -1,26 +1,23 @@
 import time
 import copy
 import sys
+import _pickle as cPickle
 import random
-from halma_model import HalmaModel
+import gc
 
 # tambahin kode untuk opsi berhenti masukin ply satu lur (tujuan = asal), biar ikut dicek eval Funct nya
 class HalmaPlayer02:
     nama = "Pemain"
     deskripsi = "Kelompok 2"
-    # nomor = 1
-    # index = 0
+    nomor = 1
+    index = 0
     papan = []
 
     def __init__(self, nama):
         self.nama = nama
         self._ply = 3
-        self._maxbreadth = 300
-        self._maxbranch = 6 #max branch dalam satu ply
-        self._loncat = 0
-        self._geser = 0
-        self._henti = 0
-        self._inc = 1
+        self.pilihan = []
+        self._childMax = 25
 
     def setNomor(self, nomor):
         self.nomor = nomor
@@ -112,6 +109,7 @@ class HalmaPlayer02:
                                                 loncat[baris+1] = { kolom: { "xy": (x3,y3), "parent":(x1,y1) } }
                                             # print(baris, kolom)
                                             kolom +=1
+                                            # gc.disable()
                                             memory.append((x1,y1))
                 baris += 1
             except:
@@ -165,9 +163,11 @@ class HalmaPlayer02:
         return loncat2
 
     # mensimulasikan next step kalo disi)ilakukan aksi tertentu thd papan
-    def nextStep(self, model2, tujuan, asal, aksi, giliran):
-        if model2.getGiliran() != giliran-1 :
+    def nextStep(self, model2, tujuan, asal, aksi, index):
+
+        if model2.getGiliran() != index :
             model2.ganti(0)
+
         # print("IGLGIGE", giliran-1, model2.getGiliran())
         if (aksi == model2.A_LONCAT):
             # print("ASD",asal, tujuan, aksi)
@@ -175,22 +175,25 @@ class HalmaPlayer02:
                 valid = model2.mainLoncat(asal[0], asal[1], xy[0], xy[1])
                 if (valid == model2.S_OK):
                     asal = xy # usulan solusi BUG#1
-                    self._loncat += self._inc
+                    # self._loncat += self._inc
         elif (aksi == model2.A_GESER):
             valid = model2.mainGeser(asal[0], asal[1], tujuan[0], tujuan[1])
             if (valid == model2.S_OK):
-                self._geser += self._inc
+                pass
+                # self._geser += self._inc
         else:
-            self._henti += self._inc
+            pass
+            # self._henti += self._inc
 
         return model2
 
     # untuk cari cabang suatu node
-    def cariCabang(self, model, giliran):
+    def cariCabang(self, model, maxPlayer):
         cabang = []
         papan = model.getPapan()
-        index = giliran - 1
+        index = self.index if maxPlayer else 1-self.index
         # print(index)
+        # print("time taken:", time.process_time() - time_start)
         b0 = model.getPosisiBidak(index)
         # print("ASD", b0)
         for b in b0:
@@ -198,59 +201,33 @@ class HalmaPlayer02:
             g, l = self.bisaMain(model, papan, index, b[0], b[1])
             asal = b
 
-            udah = []
-            for i in range(len(g)):
-                kelar = False
-                node = copy.deepcopy(model)
-                aksi = model.A_GESER
-                while not kelar:
-                    x = random.randint(0,len(g)-1)
-                    if x not in udah:
-                        tujuan = g[x]
-                        nextNode = self.nextStep(node, tujuan, asal, aksi, giliran)
-
-                        udah.append(x)
-                        cabang.append((nextNode, tujuan, asal, aksi))
-                        kelar = True
-
-            udah = []
             for i in range(len(l)):
-                kelar = False
-                node = copy.deepcopy(model)
+                node = self.deepcopy(model)
                 aksi = model.A_LONCAT
-                while not kelar:
-                    x = random.randint(0,len(l)-1)
-                    if x not in udah:
-                        tujuan = l[x] if type(l[x]) != tuple else [l[x]]
-                        nextNode = self.nextStep(node, tujuan, asal, aksi, giliran)
+                tujuan = l[i] if type(l[i]) != tuple else [l[i]]
+                nextNode = self.nextStep(node, tujuan, asal, aksi, index)
 
-                        udah.append(x)
-                        cabang.append((nextNode, tujuan, asal, aksi))
-                        kelar = True
+                cabang.append((nextNode, tujuan, asal, aksi))
+
+            for i in range(len(g)):
+                node = self.deepcopy(model)
+                aksi = model.A_GESER
+                tujuan = g[i]
+                nextNode = self.nextStep(node, tujuan, asal, aksi, index)
+
+                cabang.append((nextNode, tujuan, asal, aksi))
 
         return cabang
 
-    def updateDict(self, dict, k1, k2, isi):
-        try:
-            dict[k1][k2].update(isi)
-        except:
-            try:
-                dict[k1][k2] = isi
-            except:
-                try:
-                    dict[k1].update({k2:isi})
-                except:
-                    dict[k1] = {k2: isi}
-
-    def evalFunc(self, node, giliran):
+    def evalFunc(self, node, maxPlayer):
         score = 0
-        w0 = 0.5
+        w0 = 0.1
         w1 = 1
         w2 = 0.1
         w3 = 1
-        index = giliran-1
+        index = self.index if maxPlayer else 1-self.index
         ladder03 = self.evalFuncLadder(node,index,0,3)
-        ladder12 = self.evalFuncLadder(node,index,1,2)
+        ladder12 = 0 #self.evalFuncLadder(node,index,1,2)
 
         # print("CENTROID = ", self.evalCentroid(node, index))
         # print("TARGET = ", self.evalFuncTarget(node,index))
@@ -260,10 +237,12 @@ class HalmaPlayer02:
         # print("--------")
 
         centroid = self.evalCentroid(node, index)
-        score += centroid * w0 if index == 0 else -centroid*w0
+        score += centroid * w0 if index == 1 else -centroid*w0
         score += self.evalFuncTarget(node,index) * w1
         score -= self.evalFuncTarget(node,1-index) * w2
         score +=  max(ladder03, ladder12) * w3
+
+        # print("Score:", score)
 
         return score
 
@@ -274,14 +253,14 @@ class HalmaPlayer02:
         for i in range(len(papan)):
             for j in range(len(papan[i])):
                 if papan[i][j] == 1:
-                    c += j + i
+                    c += node.getUkuran()-j-i
                     # print("i",i,"j",j, "score:", j+i)
 
         return c
 
     def papanBiner(self, node, giliran, a, b):
         papan = node.getPapan()
-        papan_biner = copy.deepcopy(papan)
+        papan_biner = self.deepcopy(papan)
 
         for i in range(len(papan)):
             for j in range(len(papan)):
@@ -341,143 +320,65 @@ class HalmaPlayer02:
 
         return sum([sum(c[i]) for i in range(len(c))])
 
+    def minimax(self, position, depth, alpha, beta, maxPlayer):
+        if depth == 0 or position.akhir():
+            return self.evalFunc(position, maxPlayer)
 
-    def cariMax(self, evalScore):
-        score = []
-        max = -9999
-        for i in evalScore:
-            if (evalScore[i]["score"] > max):
-                max = evalScore[i]["score"]
-        #
-        # for i in range(len(evalScore)):
-        #     if (evalScore[i] >= max):
-        #         score.append(evalScore[i])
-        return max
+        if maxPlayer:
+            maxEval = -9999
+            cabang = self.cariCabang(position, True)
+            childCount = 0
+            for child in cabang:
+                if childCount < self._childMax:
+                    eval = self.minimax(child[0], depth-1, alpha, beta, False)
+                    # these two lines is somehow the problem
+                    if depth == self._ply and maxEval >= eval:
+                        gc.disable()
+                        self.pilihan.append((child[1],child[2],child[3])) #awalnya append diganti =
 
-    # Untuk cari value min
-    def cariMin(self, evalScore):
-        score = []
-        min = 9999
-        for i in evalScore:
-            if (evalScore[i]["score"] < min):
-                min = evalScore[i]["score"]
+                    maxEval = max(maxEval,eval)
+                    alpha = max(alpha, eval)
+                    if beta <= alpha:
+                        break
+                childCount +=1
+            return maxEval
+        else:
+            minEval = 9999
+            cabang = self.cariCabang(position, False)
+            childCount = 0
+            for child in cabang:
+                if childCount < self._childMax:
+                    eval = self.minimax(child[0], depth-1, alpha, beta, True)
+                    minEval = min(minEval,eval)
+                    beta = min(beta, eval)
+                    if beta <= alpha:
+                        break
+                childCount +=1
+            return minEval
 
-        # for i in range(len(evalScore)):
-        #     if (evalScore[i] == min):
-        #         score.append(evalScore[i])
-        return min
-
+    def deepcopy(self, model):
+        return cPickle.loads(cPickle.dumps(model, -1))
 
     def main(self, model):
         time_start = time.process_time()
 
         #initialization
-        # print(model.getPapan())
-        time.sleep(1)
-        model1 = copy.deepcopy(model)
-        tree = {} # i: {j: {"node": node, "parent": (parent_i, parent_j), "tujuan": tujuan, "asal":asal, "aksi": aksi}}
-        evalScore = {}
-        tree[0] = {0: {"node": model1 }}
+        self.pilihan = []
+        initPos = self.deepcopy(model)
 
-        # giliran = self.nomor
-        index = self.nomor-1
-        # print("GIL",giliran)
-
-        # search x ply
-# cabang masih belum dapet semua euy
-        for i in range(0, self._ply):
-            no = 0
-            if i % 2 == 0: #MAX
-                giliran = 1 + index
-            else: #MIN
-                giliran = 1 + 1- index
-
-            udah = []
-
-            for j in range(len(tree[i])):
-                no2 = 0
-                kelar = False #milih j dirandom, questionable tapi lur
-                while not kelar:
-                    x = random.randint(0, len(tree[i])-1)
-                    if x not in udah:
-                        parent = (i,x)
-                        cabang = self.cariCabang(tree[i][x]["node"], giliran)
-                        # print(parent, '----', cabang, '\r\n')
-                        for k in range(len(cabang)): #lets only take x child per node
-                            if no < self._maxbreadth:
-                                if no2 < self._maxbranch:
-                                    # parent = (i,j)
-                                    isi = {"node": cabang[k][0], "parent": parent, "tujuan": cabang[k][1], "asal": cabang[k][2], "aksi": cabang[k][3]}
-                                    self.updateDict(tree, i+1, no, isi)
-
-                                    no += 1
-                                    no2 +=1
-                        udah.append(x)
-                        kelar = True
-
-
-        # evaluation function
-        # print(tree)
-        # time.sleep(1000)
-        frontier = tree[self._ply]
-        n = 0
-        oldParent = None
-        for i in range(len(frontier)):
-            parent = frontier[i]["parent"]
-            # print(parent)
-            if self._ply % 2 == 1: #ujungnya max
-                giliran = 1 + index
-            else:
-                giliran = 1 + 1-index
-
-            if parent != oldParent:
-                oldParent = parent
-                n = 0
-            else:
-                n +=1
-
-            isi = { n: {"i" : i, "score": self.evalFunc(frontier[i]["node"], giliran) } }
-            # print(isi)
-            self.updateDict(evalScore, parent[0], parent[1], isi)
-
-
-        # minimax + alpha beta pruning
-        for parent_i in reversed(range(1, self._ply)):
-            n = 0
-            for parent_j in evalScore[parent_i]:
-                parent2 = tree[parent_i][parent_j]["parent"]
-                if parent_i % 2 == 0: #MAX
-                    score = self.cariMax(evalScore[parent_i][parent_j])
-                else:
-                    score = self.cariMin(evalScore[parent_i][parent_j])
-
-                isi = { n: {"i" : parent_j, "score": score } }
-                self.updateDict(evalScore, parent2[0], parent2[1], isi)
-
-                n += 1
-
-        # print("hSDf", evalScore)
-
-        # move selection
-        pilihan = []
-        for j in evalScore[1]:
-            for n in evalScore[1][j]:
-                if evalScore[1][j][n]["score"] == evalScore[0][0][0]["score"]:
-                    pilihan.append((tree[1][j]["tujuan"], tree[1][j]["asal"], tree[1][j]["aksi"]))
-
-
+        evalScore = self.minimax(initPos, self._ply, -9999, 9999, True)
+        print(evalScore)
         print("time taken:", time.process_time() - time_start)
-
-        # return
-        print(pilihan)
-        if len(pilihan) > 0:
-            pilih = random.randint(0,len(pilihan)-1)
-            print(pilihan[pilih])
+        #
+        print(self.pilihan)
+        if len(self.pilihan) > 0:
+            pilih = random.randint(0,len(self.pilihan)-1)
+            print(self.pilihan[pilih])
             # print(type(pilihan[pilih][0]) != tuple)
 
-            if pilihan[pilih][2] == model.A_LONCAT:
-                return (pilihan[pilih][0], pilihan[pilih][1], pilihan[pilih][2]) if type(pilihan[pilih][0]) != tuple else ([pilihan[pilih][0]], pilihan[pilih][1], pilihan[pilih][2])
+            if self.pilihan[pilih][2] == model.A_LONCAT:
+                return (self.pilihan[pilih][0], self.pilihan[pilih][1], self.pilihan[pilih][2]) if type(self.pilihan[pilih][0]) != tuple else ([self.pilihan[pilih][0]], self.pilihan[pilih][1], self.pilihan[pilih][2])
             else:
-                return [pilihan[pilih][0]], pilihan[pilih][1], pilihan[pilih][2]
+                return [self.pilihan[pilih][0]], self.pilihan[pilih][1], self.pilihan[pilih][2]
         else:
             return None, None, model.A_BERHENTI
