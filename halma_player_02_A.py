@@ -1,36 +1,184 @@
 import time
-import copy
-import sys
+import _pickle as cPickle
 import random
-from halma_model import HalmaModel
+import gc
+import math
 
-# tambahin kode untuk opsi berhenti masukin ply satu lur (tujuan = asal), biar ikut dicek eval Funct nya
 class HalmaPlayer02:
     nama = "Pemain"
-    deskripsi = "Kelompok 2"
-    # nomor = 1
-    # index = 0
+    deskripsi = "Kelompok 2 (13316017 - 13316079 - 13316087)"
+    nomor = 1
+    index = 0
     papan = []
 
+# 1. FUNGSI INIT --------------------------------------------------------------
     def __init__(self, nama):
         self.nama = nama
-        self._ply = 3
-        self._maxbreadth = 300
-        self._maxbranch = 6 #max branch dalam satu ply
-        self._loncat = 0
-        self._geser = 0
-        self._henti = 0
-        self._inc = 1
+
+        self._ply = 2
+        self._childMax = 20
+        self.pilihan = []
+
+        self.moveCount = 0
+        self.stage = 0
+        self.lastScore = 0
+
+        self.setup = True
+        self.nkotak = 0
+        self.nbidak = 0
 
     def setNomor(self, nomor):
         self.nomor = nomor
-        self.index = nomor-1
+        self.index = nomor - 1
+
+    # To copy a class ~1.6x faster than copy.deepcopy()
+    # https://stackoverflow.com/questions/24756712/deepcopy-is-extremely-slow/29385667#29385667
+    def deepcopy(self, model):
+        return cPickle.loads(cPickle.dumps(model, -1))
+
+# 2. FUNGSI CARI CABANG -------------------------------------------------------
+    # Mencari cabang suatu node
+    def cariCabang(self, model, maxPlayer, ketat):
+        # inisialisasi
+        cabang = []
+        papan = model.getPapan()
+        index = self.index if maxPlayer else 1 - self.index
+        x = self.getTarget(index)
+        b0 = model.getPosisiBidak(index)
+
+        # ubah urutan b0 berdasar stage sekarang
+        if self.stage == 0:  # stage nol dari depan dulu
+            # b0 = sorted(b0, key=lambda b: math.sqrt((x[0] - b[0])**2 + (x[1] - b[1])**2))
+            if index == 0:
+                b0.reverse()
+        elif self.stage < 4: # stage 1-3 mulai dari belakang
+            b0 = sorted(b0, key=lambda b: math.sqrt((x[0] - b[0])**2 + (x[1] - b[1])**2),  reverse=True)
+        else:  # stage 4 pilih acak
+            random.shuffle(b0)
+
+        # cari cabang dari b0
+        for b in b0:
+            # stage 0 usahakan semua telah keluar dari daerah asal dulu
+            if self.stage == 0:
+                if ketat and not model.dalamTujuan(1 - index, b[0], b[1]):
+                    continue
+
+            # dapatkan langkah geser dan loncat yang mungkin
+            g, l = self.bisaMain(model, papan, index, b[0], b[1])
+            asal = b
+
+            # periksa langkah lompatan
+            for i in range(len(l)):
+                node = self.deepcopy(model)
+                aksi = model.A_LONCAT
+                tujuan = l[i] if type(l[i]) != tuple else [l[i]]
+
+                # aturan tambahan
+                if ketat:
+                    # jangan balik ke kandang
+                    if self.stage > 0:
+                        if model.dalamTujuan(1 - index, tujuan[0][0], tujuan[0][1]):
+                            continue
+
+                    # dahulukan kalau dari luar daerah tujuan bisa masuk ke daerah tujuan
+                    # kalau gabisa asal perpindahannya masih di dalem oke2 aja
+                    if not model.dalamTujuan(index, asal[0], asal[1]):
+                        if model.dalamTujuan(index, tujuan[0][0], tujuan[0][1]):
+                            pass
+                    else:
+                        # kalau stage awal jangan ambil yang asalnya dari daerah tujuan
+                        # isi dulu daerah target
+                        if self.stage < 3:
+                            continue
+                        else:
+                            # kalau pindahnya keluar daerah tujuan maka jangan diambil
+                            if not model.dalamTujuan(index, tujuan[0][0], tujuan[0][1]):
+                                continue
+
+                    # kalau stage akhir kalau asalnya dari dalam daerah tujuan jgn diambil
+                    if self.stage == 4:
+                        if model.dalamTujuan(index, asal[0], asal[1]):
+                            continue
+
+                    # ambil gerakan yang pasti mengurangi manhattan distance
+                    asalCent = math.sqrt((x[0] - asal[0])**2 + (x[1] - asal[1])**2)
+                    tujuanCent = math.sqrt((x[0] - tujuan[0][0])**2 + (x[1] - tujuan[0][1])**2)
+                    if asalCent > tujuanCent:
+                        pass
+                    else:
+                        continue
+
+                    # jadikan cabang yang lolos filter
+                    nextNode = self.nextStep(node, tujuan, asal, aksi, index)
+                    cabang.append((nextNode, tujuan, asal, aksi))
+                else: # aturan versi rileks
+                    # kalau pindah dari daerah tujuan ke daerah luar jangan diambil
+                    if model.dalamTujuan(index, asal[0], asal[1]) and not model.dalamTujuan(index, tujuan[0][0], tujuan[0][1]):
+                        continue
+                    nextNode = self.nextStep(node, tujuan, asal, aksi, index)
+                    cabang.append((nextNode, tujuan, asal, aksi))
+
+            # periksa langkah geser
+            for i in range(len(g)):
+                node = self.deepcopy(model)
+                aksi = model.A_GESER
+                tujuan = g[i]
+
+                # aturan tambahan
+                if ketat:
+                    # jangan balik ke kandang
+                    if self.stage > 0:
+                        if model.dalamTujuan(1 - index, tujuan[0], tujuan[1]):
+                            continue
+
+                    # dahulukan kalau dari luar daerah tujuan bisa masuk ke daerah tujuan
+                    # kalau gabisa asal perpindahannya masih di dalem oke2 aja
+                    if not model.dalamTujuan(index, asal[0], asal[1]):
+                        if model.dalamTujuan(index, tujuan[0], tujuan[1]):
+                            pass
+                    else:
+                        # kalau stage awal jangan ambil yang asalnya dari daerah tujuan
+                        # isi dulu daerah target
+                        if self.stage < 3:
+                            continue
+                        else:
+                            # kalau pindahnya keluar daerah tujuan maka jangan diambil
+                            if not model.dalamTujuan(index, tujuan[0], tujuan[1]):
+                                continue
+
+                    # kalau stage akhir kalau asalnya dari dalam daerah tujuan jgn diambil
+                    if self.stage == 4:
+                        if model.dalamTujuan(index, asal[0], asal[1]):
+                            continue
+
+                    # ambil gerakan yang pasti mengurangi manhattan distance
+                    asalCent = math.sqrt((x[0] - asal[0])**2 + (x[1] - asal[1])**2)
+                    tujuanCent = math.sqrt((x[0] - tujuan[0])**2 + (x[1] - tujuan[1])**2)
+                    if asalCent > tujuanCent:
+                        pass
+                    else:
+                        continue
+
+                    # jadikan cabang yang lolos filter
+                    nextNode = self.nextStep(node, tujuan, asal, aksi, index)
+                    cabang.append((nextNode, tujuan, asal, aksi))
+                else: # aturan versi rileks
+                    # kalau pindah dari daerah tujuan ke daerah luar jangan diambil
+                    if model.dalamTujuan(index, asal[0], asal[1]) and not model.dalamTujuan(index, tujuan[0], tujuan[1]):
+                        continue
+                    nextNode = self.nextStep(node, tujuan, asal, aksi, index)
+                    cabang.append((nextNode, tujuan, asal, aksi))
+
+        # kalau ternyata ga dapat cabang, longgarkan aturan
+        if cabang == []:
+            cabang = self.cariCabang(model, maxPlayer, False)
+
+        return cabang
 
     # mengembalikan semua kemungkikan main (geser / loncat) bidak di (x1, y1)
     def bisaMain(self, model, papan, ip, x1, y1):
         geser = []
         loncat = {}
-        # loncat_buffer = []
         baris = 0
         kolom = 0
 
@@ -42,7 +190,7 @@ class HalmaPlayer02:
             if model.dalamPapan(x2, y2):
                 if (papan[x2][y2] == 0):
                     if not dTujuan or model.dalamTujuan(ip, x2, y2):
-                        geser.append((x2,y2))
+                        geser.append((x2, y2))
                 else:
                     x3 = x2 + a[0]
                     y3 = y2 + a[1]
@@ -51,40 +199,33 @@ class HalmaPlayer02:
                         if (papan[x3][y3] == 0):
                             if not dTujuan or model.dalamTujuan(ip, x3, y3):
                                 try:
-                                    loncat[baris].update( { kolom: {"xy": (x3,y3) } })
+                                    loncat[baris].update(
+                                        {kolom: {"xy": (x3, y3)}})
                                 except:
-                                    loncat[baris] = { kolom: { "xy": (x3,y3) } }
+                                    loncat[baris] = {kolom: {"xy": (x3, y3)}}
                                 kolom += 1
-        # print("THISDONE")
+
         loncat = self.loncatanPlus(model, papan, loncat, ip)
-        # print("THISDONE")
+
         # done getting the dictionary i wanted, now i need to sort it
         # to match the format specified
-
         loncat2 = self.sortLoncat(loncat)
-
-        # print(x1, y1)
-        # print(loncat2)
-        # print("--------")
-        # time.sleep(1)
-
-        # loncat2 =
-        # print("GESER", geser)
-        # print("LONCAT", loncat2)
 
         return geser, loncat2
 
+    # Mencari loncatan lanjutan
     def loncatanPlus(self, model, papan, loncat, ip):
         loncat_buffer = []
         baris = 1
         stopCheck = False
-        memory = (0,0)
+        memory = (0, 0)
 
         baris = 0
         while stopCheck == False:
             try:
                 kolom = 0
-                for i in range(len(loncat[baris])): #untuk semua elemen dalam satu baris
+                # untuk semua elemen dalam satu baris
+                for i in range(len(loncat[baris])):
                     x1 = loncat[baris][i]["xy"][0]
                     y1 = loncat[baris][i]["xy"][1]
                     dTujuan = model.dalamTujuan(ip, x1, y1)
@@ -100,384 +241,257 @@ class HalmaPlayer02:
                                 x3 = x2 + a[0]
                                 y3 = y2 + a[1]
                                 # print("xy3", x3, y3, papan[x3][y3])
-                                if model.dalamPapan(x3, y3) and (x3,y3) not in memory:
+                                if model.dalamPapan(x3, y3) and (x3, y3) not in memory:
                                     if (papan[x3][y3] == 0):
                                         if not dTujuan or model.dalamTujuan(ip, x3, y3):
                                             # print("BLAST")
                                             try:
                                                 # print("BLAST2")
-                                                loncat[baris+1].update( { kolom: {"xy": (x3,y3), "parent":(x1,y1) } })
+                                                loncat[baris + 1].update(
+                                                    {kolom: {"xy": (x3, y3), "parent": (x1, y1)}})
                                             except:
                                                 # print("BLAST3")
-                                                loncat[baris+1] = { kolom: { "xy": (x3,y3), "parent":(x1,y1) } }
+                                                loncat[baris + 1] = {
+                                                    kolom: {"xy": (x3, y3), "parent": (x1, y1)}}
                                             # print(baris, kolom)
-                                            kolom +=1
-                                            memory.append((x1,y1))
+                                            kolom += 1
+                                            # gc.disable()
+                                            memory.append((x1, y1))
                 baris += 1
             except:
-                # print(sys.exc_info())
                 stopCheck = True
 
         return loncat
 
+    # Sort Loncatan yang telah didapat
     def sortLoncat(self, loncat):
-
-        # sort dari frontier ujung ke parent ujung
-
         buffer = []
         loncat2 = []
         no = 0
-        baris = len(loncat)-1 if len(loncat) > 0 else None #baris terakhir
-        # print(loncat)
+        baris = len(loncat) - 1 if len(loncat) > 0 else None  # baris terakhir
         if baris != None:
-            # print(loncat[baris])
-            for kolom in range(len(loncat[baris])): #untuk semua kolom dalam baris terakhir
+            # untuk semua kolom dalam baris terakhir
+            for kolom in range(len(loncat[baris])):
                 if baris > 0:
-                    # print("BLAST")
-                    buffer = [loncat[baris][kolom]["xy"], loncat[baris][kolom]["parent"]] #tambahkan xy tersebut dan parentnya
+                    # tambahkan xy tersebut dan parentnya
+                    buffer = [loncat[baris][kolom]["xy"],
+                              loncat[baris][kolom]["parent"]]
                     # cari ke atas, kalau xy itu ada di buffer = tambahkan parentnya ke buffer
-                    for i in reversed(range(len(loncat)-1)):
-                        # print("BLAST2")
+                    for i in reversed(range(len(loncat) - 1)):
                         for j in range(len(loncat[i])):
-                            # print("MEH", loncat[i][j]["xy"])
-
                             if (loncat[i][j]["xy"] in buffer):
                                 if("parent" in loncat[i][j].keys()):
                                     buffer.append(loncat[i][j]["parent"])
                             else:
-                                if (i==0):
+                                if (i == 0):
                                     loncat2.append(loncat[i][j]["xy"])
 
                     buffer2 = buffer[::-1]
 
                     loncat2.append(buffer2)
 
-                    for i in range(1,len(buffer2)):
+                    for i in range(1, len(buffer2)):
                         buffer3 = buffer2[:i]
-                        # print("ASD", buffer3)
                         loncat2.append(buffer3)
-                else :
+                else:
                     loncat2.append(loncat[baris][kolom]["xy"])
-
-
-        # print(loncat2)
 
         return loncat2
 
     # mensimulasikan next step kalo disi)ilakukan aksi tertentu thd papan
-    def nextStep(self, model2, tujuan, asal, aksi, giliran):
-        if model2.getGiliran() != giliran-1 :
+    def nextStep(self, model2, tujuan, asal, aksi, index):
+        # sesuaikan giliran
+        if model2.getGiliran() != index:
             model2.ganti(0)
-        # print("IGLGIGE", giliran-1, model2.getGiliran())
+
         if (aksi == model2.A_LONCAT):
-            # print("ASD",asal, tujuan, aksi)
             for xy in tujuan:
                 valid = model2.mainLoncat(asal[0], asal[1], xy[0], xy[1])
                 if (valid == model2.S_OK):
-                    asal = xy # usulan solusi BUG#1
-                    self._loncat += self._inc
+                    asal = xy
         elif (aksi == model2.A_GESER):
             valid = model2.mainGeser(asal[0], asal[1], tujuan[0], tujuan[1])
             if (valid == model2.S_OK):
-                self._geser += self._inc
+                pass
         else:
-            self._henti += self._inc
+            pass
 
         return model2
 
-    # untuk cari cabang suatu node
-    def cariCabang(self, model, giliran):
-        cabang = []
-        papan = model.getPapan()
-        index = giliran - 1
-        # print(index)
-        b0 = model.getPosisiBidak(index)
-        # print("ASD", b0)
-        for b in b0:
-            # print(b)
-            g, l = self.bisaMain(model, papan, index, b[0], b[1])
-            asal = b
-
-            udah = []
-            for i in range(len(g)):
-                kelar = False
-                node = copy.deepcopy(model)
-                aksi = model.A_GESER
-                while not kelar:
-                    x = random.randint(0,len(g)-1)
-                    if x not in udah:
-                        tujuan = g[x]
-                        nextNode = self.nextStep(node, tujuan, asal, aksi, giliran)
-
-                        udah.append(x)
-                        cabang.append((nextNode, tujuan, asal, aksi))
-                        kelar = True
-
-            udah = []
-            for i in range(len(l)):
-                kelar = False
-                node = copy.deepcopy(model)
-                aksi = model.A_LONCAT
-                while not kelar:
-                    x = random.randint(0,len(l)-1)
-                    if x not in udah:
-                        tujuan = l[x] if type(l[x]) != tuple else [l[x]]
-                        nextNode = self.nextStep(node, tujuan, asal, aksi, giliran)
-
-                        udah.append(x)
-                        cabang.append((nextNode, tujuan, asal, aksi))
-                        kelar = True
-
-        return cabang
-
-    def updateDict(self, dict, k1, k2, isi):
-        try:
-            dict[k1][k2].update(isi)
-        except:
-            try:
-                dict[k1][k2] = isi
-            except:
-                try:
-                    dict[k1].update({k2:isi})
-                except:
-                    dict[k1] = {k2: isi}
-
-    def evalFunc(self, node, giliran):
+# 3. FUNGSI STATIC EVALUATION -------------------------------------------------
+    # Menghitung Fungsi Evaluasi berdasar kondisi node (Mirip A*)
+    def evalFunc(self, node):
+        # inisialisasi
         score = 0
-        w0 = 0.5
-        w1 = 1
-        w2 = 0.1
-        w3 = 1
-        index = giliran-1
-        ladder03 = self.evalFuncLadder(node,index,0,3)
-        ladder12 = self.evalFuncLadder(node,index,1,2)
 
-        # print("CENTROID = ", self.evalCentroid(node, index))
-        # print("TARGET = ", self.evalFuncTarget(node,index))
-        # print("TARGET2 = ", self.evalFuncTarget(node,1-index))
-        # print("LADDER03 = ", ladder03)
-        # print("LADDER12 = ", ladder12)
-        # print("--------")
+        # bobot
+        w0 = -0.5
+        w1 = 10
 
-        centroid = self.evalCentroid(node, index)
-        score += centroid * w0 if index == 0 else -centroid*w0
-        score += self.evalFuncTarget(node,index) * w1
-        score -= self.evalFuncTarget(node,1-index) * w2
-        score +=  max(ladder03, ladder12) * w3
+        # A* = h + g
+        score += w0 * self.evalManhattan(node, self.index)
+        score += w1 * (self.evalFuncTarget(node, self.index) - self.lastScore)
 
         return score
 
-    def evalCentroid(self, node, giliran):
-        papan = self.papanBiner(node,giliran,1,0)
+    # Fungsi Evaluasi Manhattan Distance (Heuristik)
+    def evalManhattan(self, node, giliran):
+        b0 = node.getPosisiBidak(giliran)
         c = 0
-        # print("AS", papan)
-        for i in range(len(papan)):
-            for j in range(len(papan[i])):
-                if papan[i][j] == 1:
-                    c += j + i
-                    # print("i",i,"j",j, "score:", j+i)
+
+        # Target manhattan adalah ujung kotak tempat tujuan
+        x = self.getTarget(giliran)
+
+        # Kalau stage lanjutan, maka target manhattan diganti jadi salah satu kotak kosong
+        if self.stage > 2 and self.cariKosong(node, giliran) != []:
+            x = self.cariKosong(node, giliran)
+
+        for b in b0:
+            c += math.sqrt((x[0] - b[0])**2 + (x[1] - b[1])**2)
 
         return c
 
-    def papanBiner(self, node, giliran, a, b):
-        papan = node.getPapan()
-        papan_biner = copy.deepcopy(papan)
-
-        for i in range(len(papan)):
-            for j in range(len(papan)):
-                if int(str(papan[i][j])[:1]) == giliran+1:
-                    papan_biner [i][j] = a
-                elif int(str(papan[i][j])[:1]) == 1-giliran + 1:
-                    papan_biner [i][j] = b
-                else:
-                    papan_biner [i][j] = 0
-        return papan_biner
-
+    # Fungsi Evaluasi jumlah bidak yang berada di daerah tujuan
     def evalFuncTarget(self, node, giliran):
         score = 0
         papan = node.getPapan()
 
         for i in range(len(papan)):
             for j in range(len(papan[i])):
-                if papan[i][j] // 100 == giliran+1:
-                    if node.dalamTujuan(giliran,i,j):
-                        score +=1
+                if papan[i][j] // 100 == giliran + 1:
+                    if node.dalamTujuan(giliran, i, j):
+                        score += 1
 
         return score
 
-    def buildArmyType(self, no):
-        ladder = [[0]*no for i in range(no)]
-        x = 0
-        for i in range(len(ladder)):
-            for j in range(len(ladder[i])):
-                if i%2==0:
-                    ladder[i][j] = x
-                else:
-                    ladder[i][j] = x+2
-                x = 0 if(x==1) else 1
-        return ladder
+    # Fungsi untuk mencari kotak yang kosong di daerah tujuan
+    def cariKosong(self, node, index):
+        index = self.index
+        papan = self.papanBiner(node, index, 1, 0)
+        kosong = []
+        if index == 1:
+            for i in range(len(papan)):
+                for j in range(len(papan[i])):
+                    if papan[i][j] == 0:
+                        if node.dalamTujuan(index, i, j):
+                            kosong = (i, j)
+                            break
+        else:
+            for i in reversed(range(len(papan))):
+                for j in reversed(range(len(papan[i]))):
+                    if papan[i][j] == 0:
+                        if node.dalamTujuan(index, i, j):
+                            kosong = (i, j)
+                            break
 
-    def evalFuncLadder(self, node, giliran, no1, no2):
-        papan = self.papanBiner(node,giliran, 1, 1)
-        no = node.getUkuran()
-        c = [[0]*no for i in range(no)]
-        ladder = self.buildArmyType(no)
+        return kosong
 
-        for i in range(len(ladder)):
-            for j in range(len(ladder[i])):
-                if ladder[i][j] == no1 or ladder[i][j] == no2:
-                    if not node.dalamTujuan(0, i, j) and not node.dalamTujuan(1,i,j):
-                        ladder[i][j] = 1
-                else:
-                    ladder[i][j] = 0
+    # Untuk dapat ujung daerah tujuan
+    def getTarget(self, index):
+        if index == 0:
+            x = (self.nkotak-1, self.nkotak-1)
+        elif index == 1:
+            x = (0, 0)
+        return x
 
-        # print(ladder)
+    # Mengonversi papan menjadi biner 1 / 0 sehingga mudah diolah
+    def papanBiner(self, node, giliran, a, b):
+        papan = node.getPapan()
+        papan_biner = self.deepcopy(papan)
 
         for i in range(len(papan)):
-            for j in range(len(papan[i])):
-                c[i][j] = papan[i][j] & ladder[i][j]
+            for j in range(len(papan)):
+                if int(str(papan[i][j])[:1]) == giliran + 1:
+                    papan_biner[i][j] = a
+                elif int(str(papan[i][j])[:1]) == 1 - giliran + 1:
+                    papan_biner[i][j] = b
+                else:
+                    papan_biner[i][j] = 0
+        return papan_biner
 
-        # print("C", c)
+# 4. FUNGSI MINIMAX + PRUNING -------------------------------------------------
+    # Minimax with alpha-beta pruning
+    # https://www.youtube.com/watch?v=l-hh51ncgDI
+    def minimax(self, position, depth, alpha, beta, maxPlayer):
+        if depth == 0 or position.akhir():
+            return self.evalFunc(position)
 
-        return sum([sum(c[i]) for i in range(len(c))])
+        if maxPlayer:
+            maxEval = -9999
+            cabang = self.cariCabang(position, True, True)
+            childCount = 0
+            for child in cabang:
+                if childCount < self._childMax:
+                    eval = self.minimax(
+                        child[0], depth - 1, alpha, beta, False)
+                    # these two lines is somehow the problem
+                    if depth == self._ply and eval >= maxEval:
+                        gc.disable()
+                        self.pilihan.append((child[1], child[2], child[3]))
 
+                    maxEval = max(maxEval, eval)
+                    alpha = max(alpha, eval)
+                    if beta <= alpha:
+                        break
+                childCount += 1
+            return maxEval
+        else:
+            minEval = 9999
+            cabang = self.cariCabang(position, False, True)
+            childCount = 0
+            for child in cabang:
+                if childCount < self._childMax:
+                    eval = self.minimax(child[0], depth - 1, alpha, beta, True)
+                    minEval = min(minEval, eval)
+                    beta = min(beta, eval)
+                    if beta <= alpha:
+                        break
+                childCount += 1
+            return minEval
 
-    def cariMax(self, evalScore):
-        score = []
-        max = -9999
-        for i in evalScore:
-            if (evalScore[i]["score"] > max):
-                max = evalScore[i]["score"]
-        #
-        # for i in range(len(evalScore)):
-        #     if (evalScore[i] >= max):
-        #         score.append(evalScore[i])
-        return max
-
-    # Untuk cari value min
-    def cariMin(self, evalScore):
-        score = []
-        min = 9999
-        for i in evalScore:
-            if (evalScore[i]["score"] < min):
-                min = evalScore[i]["score"]
-
-        # for i in range(len(evalScore)):
-        #     if (evalScore[i] == min):
-        #         score.append(evalScore[i])
-        return min
-
-
+# 0. MAIN CALL ----------------------------------------------------------------
+    # Main Function
     def main(self, model):
+        # setup to run once
+        if self.setup:
+            self.nkotak = model.getUkuran()
+            self.nbidak = model.getJumlahBidak()
+            self.setup = False
+
+        # indicate stages based on number of moves so far
+        if self.moveCount > 20:
+            self.stage += 1
+            self.moveCount = 0
+            if self.stage > 4:
+                self.stage = 4
+
         time_start = time.process_time()
 
-        #initialization
-        # print(model.getPapan())
-        time.sleep(1)
-        model1 = copy.deepcopy(model)
-        tree = {} # i: {j: {"node": node, "parent": (parent_i, parent_j), "tujuan": tujuan, "asal":asal, "aksi": aksi}}
-        evalScore = {}
-        tree[0] = {0: {"node": model1 }}
+        # initialization
+        self.pilihan = []
+        initPos = self.deepcopy(model)
 
-        # giliran = self.nomor
-        index = self.nomor-1
-        # print("GIL",giliran)
+        # minimax + pruning
+        evalScore = self.minimax(initPos, self._ply, -9999, 9999, True)
 
-        # search x ply
-# cabang masih belum dapet semua euy
-        for i in range(0, self._ply):
-            no = 0
-            if i % 2 == 0: #MAX
-                giliran = 1 + index
-            else: #MIN
-                giliran = 1 + 1- index
-
-            udah = []
-
-            for j in range(len(tree[i])):
-                no2 = 0
-                kelar = False #milih j dirandom, questionable tapi lur
-                while not kelar:
-                    x = random.randint(0, len(tree[i])-1)
-                    if x not in udah:
-                        parent = (i,x)
-                        cabang = self.cariCabang(tree[i][x]["node"], giliran)
-                        # print(parent, '----', cabang, '\r\n')
-                        for k in range(len(cabang)): #lets only take x child per node
-                            if no < self._maxbreadth:
-                                if no2 < self._maxbranch:
-                                    # parent = (i,j)
-                                    isi = {"node": cabang[k][0], "parent": parent, "tujuan": cabang[k][1], "asal": cabang[k][2], "aksi": cabang[k][3]}
-                                    self.updateDict(tree, i+1, no, isi)
-
-                                    no += 1
-                                    no2 +=1
-                        udah.append(x)
-                        kelar = True
-
-
-        # evaluation function
-        # print(tree)
-        # time.sleep(1000)
-        frontier = tree[self._ply]
-        n = 0
-        oldParent = None
-        for i in range(len(frontier)):
-            parent = frontier[i]["parent"]
-            # print(parent)
-            if self._ply % 2 == 1: #ujungnya max
-                giliran = 1 + index
-            else:
-                giliran = 1 + 1-index
-
-            if parent != oldParent:
-                oldParent = parent
-                n = 0
-            else:
-                n +=1
-
-            isi = { n: {"i" : i, "score": self.evalFunc(frontier[i]["node"], giliran) } }
-            # print(isi)
-            self.updateDict(evalScore, parent[0], parent[1], isi)
-
-
-        # minimax + alpha beta pruning
-        for parent_i in reversed(range(1, self._ply)):
-            n = 0
-            for parent_j in evalScore[parent_i]:
-                parent2 = tree[parent_i][parent_j]["parent"]
-                if parent_i % 2 == 0: #MAX
-                    score = self.cariMax(evalScore[parent_i][parent_j])
-                else:
-                    score = self.cariMin(evalScore[parent_i][parent_j])
-
-                isi = { n: {"i" : parent_j, "score": score } }
-                self.updateDict(evalScore, parent2[0], parent2[1], isi)
-
-                n += 1
-
-        # print("hSDf", evalScore)
-
-        # move selection
-        pilihan = []
-        for j in evalScore[1]:
-            for n in evalScore[1][j]:
-                if evalScore[1][j][n]["score"] == evalScore[0][0][0]["score"]:
-                    pilihan.append((tree[1][j]["tujuan"], tree[1][j]["asal"], tree[1][j]["aksi"]))
-
-
+        # closing statements
         print("time taken:", time.process_time() - time_start)
+        self.moveCount += 1
 
-        # return
-        print(pilihan)
-        if len(pilihan) > 0:
-            pilih = random.randint(0,len(pilihan)-1)
-            print(pilihan[pilih])
-            # print(type(pilihan[pilih][0]) != tuple)
+        # return statements
+        if len(self.pilihan) > 0:
+            pilih = random.randint(0, len(self.pilihan) - 1)
 
-            if pilihan[pilih][2] == model.A_LONCAT:
-                return (pilihan[pilih][0], pilihan[pilih][1], pilihan[pilih][2]) if type(pilihan[pilih][0]) != tuple else ([pilihan[pilih][0]], pilihan[pilih][1], pilihan[pilih][2])
+            # update last score
+            self.lastScore = self.evalFuncTarget(self.nextStep(
+                initPos, self.pilihan[pilih][0], self.pilihan[pilih][1], self.pilihan[pilih][2], self.index), self.index)
+            if self.lastScore >= self.nbidak / 2:
+                self.stage = 4
+
+            # return stuffs
+            if self.pilihan[pilih][2] == model.A_LONCAT:
+                return (self.pilihan[pilih][0], self.pilihan[pilih][1], self.pilihan[pilih][2]) if type(self.pilihan[pilih][0]) != tuple else ([self.pilihan[pilih][0]], self.pilihan[pilih][1], self.pilihan[pilih][2])
             else:
-                return [pilihan[pilih][0]], pilihan[pilih][1], pilihan[pilih][2]
+                return [self.pilihan[pilih][0]], self.pilihan[pilih][1], self.pilihan[pilih][2]
         else:
             return None, None, model.A_BERHENTI
