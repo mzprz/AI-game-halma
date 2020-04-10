@@ -7,7 +7,7 @@ import gc
 import math
 
 # tambahin kode untuk opsi berhenti masukin ply satu lur (tujuan = asal), biar ikut dicek eval Funct nya
-class HalmaPlayer02:
+class HalmaPlayer04:
     nama = "Pemain"
     deskripsi = "Kelompok 2"
     nomor = 1
@@ -196,13 +196,37 @@ class HalmaPlayer02:
         cabang = []
         papan = model.getPapan()
         index = self.index if maxPlayer else 1-self.index
+        x = model.getUkuran()-1 if index==0 else 0 # !!
+
         # print(index)
         # print("time taken:", time.process_time() - time_start)
         b0 = model.getPosisiBidak(index)
         # print("awal",b0)
-
-        random.shuffle(b0)
-
+        b0 = sorted(b0, key=lambda b: math.sqrt((x-b[0])**2 + (x-b[1])**2))#sort dari depan ke belakang
+        # kalau stage awal mulai dari biji paling depan, state akhir mulai dari biji paling belakang
+        if self.stage == 0 : #stage nol dari depan dulu
+            if index == 0:
+                b0.reverse()
+        elif self.stage < 4:
+            b0 = sorted(b0, key=lambda b: math.sqrt((x-b[0])**2 + (x-b[1])**2),  reverse=True)
+        # elif self.stage < 4: #stage nol dari depan dulu
+        #     if index == 1:
+        #         b0.reverse()
+        # elif self.stage == 1: # stage 1 dari depan
+        #     if self.moveCount < 10:
+        #         b0 = sorted(b0, key=lambda b: math.sqrt((x-b[0])**2 + (x-b[1])**2))
+        #     else:
+        #         b0 = sorted(b0, key=lambda b: math.sqrt((x-b[0])**2 + (x-b[1])**2),  reverse=True)
+        # elif self.stage == 2: # stage 2 dari belakang
+        #     if self.moveCount < 10:
+        #         random.shuffle(b0)
+        #     else:
+        #         b0 = sorted(b0, key=lambda b: math.sqrt((x-b[0])**2 + (x-b[1])**2),  reverse=True)
+        #     # b0 = sorted(b0, key=lambda b: math.sqrt((x-b[0])**2 + (x-b[1])**2))
+        # elif self.stage == 3: # stage 3 random lagi
+        #     b0 = sorted(b0, key=lambda b: math.sqrt((x-b[0])**2 + (x-b[1])**2),  reverse=True)
+        else:
+            random.shuffle(b0)
         # print("akhir",b0)
         # print("ASD", b0)
         for b in b0:
@@ -216,8 +240,6 @@ class HalmaPlayer02:
 
             g, l = self.bisaMain(model, papan, index, b[0], b[1])
             asal = b
-
-            x = model.getUkuran()-1 if index==0 else 0 # !!
 
             for i in range(len(l)):
                 node = self.deepcopy(model)
@@ -234,8 +256,16 @@ class HalmaPlayer02:
                         if model.dalamTujuan(index, tujuan[0][0], tujuan[0][1]):
                             pass
                     else: # kalau asal ada di tujuan
-                        if not model.dalamTujuan(index, tujuan[0][0], tujuan[0][1]):
+                        if self.stage < 3:
                             continue
+                        else:
+                            if not model.dalamTujuan(index, tujuan[0][0], tujuan[0][1]):
+                                continue
+
+                    if self.stage == 4:
+                        if model.dalamTujuan(index, asal[0], asal[1]):
+                            continue
+
 
                     # if self.stage < 2: #ambil gerakan yang maju terus
                     asalCent = math.sqrt((x-asal[0])**2 + (x-asal[1])**2)
@@ -269,13 +299,18 @@ class HalmaPlayer02:
                     elif model.dalamTujuan(index, asal[0], asal[1]) and not model.dalamTujuan(index, tujuan[0], tujuan[1]):
                         continue
 
-                    if self.stage < 2: #unutk memastikan gerakannya maju terus
-                        asalCent = math.sqrt((x-asal[0])**2 + (x-asal[1])**2)
-                        tujuanCent =  math.sqrt((x-tujuan[0])**2 + (x-tujuan[1])**2)
-                        if asalCent > tujuanCent:
-                            pass
-                        else:
+                    # if self.stage < 2: #unutk memastikan gerakannya maju terus
+                    asalCent = math.sqrt((x-asal[0])**2 + (x-asal[1])**2)
+                    tujuanCent =  math.sqrt((x-tujuan[0])**2 + (x-tujuan[1])**2)
+                    if asalCent > tujuanCent:
+                        pass
+                    else:
+                        continue
+
+                    if self.stage == 4:
+                        if model.dalamTujuan(index, asal[0], asal[1]):
                             continue
+
                     nextNode = self.nextStep(node, tujuan, asal, aksi, index)
                     cabang.append((nextNode, tujuan, asal, aksi))
 
@@ -316,6 +351,27 @@ class HalmaPlayer02:
 
         return score
 
+    def cariKosong(self, node, index):
+        index = self.index
+        papan = self.papanBiner(node,index, 1, 0)
+        kosong = []
+        if index == 1:
+            for i in range(len(papan)):
+                for j in range(len(papan[i])):
+                    if papan[i][j] == 0:
+                        if node.dalamTujuan(index,i,j):
+                            kosong = (i,j)
+                            break
+        else:
+            for i in reversed(range(len(papan))):
+                for j in reversed(range(len(papan[i]))):
+                    if papan[i][j] == 0:
+                        if node.dalamTujuan(index,i,j):
+                            kosong = (i,j)
+                            break
+
+        return kosong
+
     def evalCentroid(self, node, giliran):
         # papan = self.papanBiner(node,giliran,1,0)
         b0 = node.getPosisiBidak(giliran)
@@ -326,7 +382,13 @@ class HalmaPlayer02:
             x= 0
         # print("AS", papan)
         for b in b0:
-            c += math.sqrt((x-b[0])**2 + (x-b[1])**2)
+
+            if self.stage > 2 and self.cariKosong(node,giliran) != []:
+                x = self.cariKosong(node,giliran)
+                c += math.sqrt((x[0]-b[0])**2 + (x[1]-b[1])**2)
+            else:
+                c += math.sqrt((x-b[0])**2 + (x-b[1])**2)
+
         # for i in range(len(papan)):
         #     for j in range(len(papan[i])):
         #         if papan[i][j] == 1:
@@ -443,8 +505,10 @@ class HalmaPlayer02:
         if self.moveCount > 20:
             self.stage +=1
             self.moveCount = 0
-            if self.stage > 2:
-                self.stage = 2
+            if self.stage > 4:
+                self.stage = 4
+
+        print(self.stage)
 
         time_start = time.process_time()
 
