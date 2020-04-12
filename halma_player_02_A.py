@@ -48,9 +48,9 @@ class HalmaPlayer02:
 
         # ubah urutan b0 berdasar stage sekarang
         if self.stage == 0:  # stage nol dari depan dulu
-            # b0 = sorted(b0, key=lambda b: math.sqrt((x[0] - b[0])**2 + (x[1] - b[1])**2))
-            if index == 0:
-                b0.reverse()
+            b0 = sorted(b0, key=lambda b: math.sqrt((x[0] - b[0])**2 + (x[1] - b[1])**2))
+            # if index == 0:
+            #     b0.reverse()
         elif self.stage < 4: # stage 1-3 mulai dari belakang
             b0 = sorted(b0, key=lambda b: math.sqrt((x[0] - b[0])**2 + (x[1] - b[1])**2),  reverse=True)
         else:  # stage 4 pilih acak
@@ -100,7 +100,7 @@ class HalmaPlayer02:
                         if model.dalamTujuan(index, asal[0], asal[1]):
                             continue
 
-                    # ambil gerakan yang pasti mengurangi manhattan distance
+                    # ambil gerakan yang pasti mengurangi Euclidian distance
                     asalCent = math.sqrt((x[0] - asal[0])**2 + (x[1] - asal[1])**2)
                     tujuanCent = math.sqrt((x[0] - tujuan[0][0])**2 + (x[1] - tujuan[0][1])**2)
                     if asalCent > tujuanCent:
@@ -151,7 +151,7 @@ class HalmaPlayer02:
                         if model.dalamTujuan(index, asal[0], asal[1]):
                             continue
 
-                    # ambil gerakan yang pasti mengurangi manhattan distance
+                    # ambil gerakan yang pasti mengurangi Euclidian distance
                     asalCent = math.sqrt((x[0] - asal[0])**2 + (x[1] - asal[1])**2)
                     tujuanCent = math.sqrt((x[0] - tujuan[0])**2 + (x[1] - tujuan[1])**2)
                     if asalCent > tujuanCent:
@@ -326,28 +326,31 @@ class HalmaPlayer02:
 
         # bobot
         w0 = -0.5
-        w1 = 10
+        w1 = 20
 
         # A* = h + g
-        score += w0 * self.evalManhattan(node, self.index)
+        score += w0 * self.evalEuclidian(node, self.index)
         score += w1 * (self.evalFuncTarget(node, self.index) - self.lastScore)
 
         return score
 
-    # Fungsi Evaluasi Manhattan Distance (Heuristik)
-    def evalManhattan(self, node, giliran):
+    # Fungsi Evaluasi Euclidian Distance (Heuristik)
+    def evalEuclidian(self, node, giliran):
         b0 = node.getPosisiBidak(giliran)
         c = 0
 
-        # Target manhattan adalah ujung kotak tempat tujuan
+        # Target Euclidian adalah ujung kotak tempat tujuan
         x = self.getTarget(giliran)
 
-        # Kalau stage lanjutan, maka target manhattan diganti jadi salah satu kotak kosong
+        # Kalau stage lanjutan, maka target Euclidian diganti jadi salah satu kotak kosong
         if self.stage > 2 and self.cariKosong(node, giliran) != []:
             x = self.cariKosong(node, giliran)
 
         for b in b0:
-            c += math.sqrt((x[0] - b[0])**2 + (x[1] - b[1])**2)
+            if node.dalamTujuan(giliran, b[0],b[1]):
+                c += 0
+            else:
+                c += math.sqrt((x[0] - b[0])**2 + (x[1] - b[1])**2)
 
         return c
 
@@ -358,9 +361,8 @@ class HalmaPlayer02:
 
         for i in range(len(papan)):
             for j in range(len(papan[i])):
-                if papan[i][j] // 100 == giliran + 1:
-                    if node.dalamTujuan(giliran, i, j):
-                        score += 1
+                if node.dalamTujuan(giliran, i, j) and papan[i][j] // 100 == (giliran + 1):
+                    score += 1
 
         return score
 
@@ -372,17 +374,15 @@ class HalmaPlayer02:
         if index == 1:
             for i in range(len(papan)):
                 for j in range(len(papan[i])):
-                    if papan[i][j] == 0:
-                        if node.dalamTujuan(index, i, j):
-                            kosong = (i, j)
-                            break
+                    if node.dalamTujuan(index, i, j) and papan[i][j] == 0:
+                        kosong = (i, j)
+                        break
         else:
             for i in reversed(range(len(papan))):
                 for j in reversed(range(len(papan[i]))):
-                    if papan[i][j] == 0:
-                        if node.dalamTujuan(index, i, j):
-                            kosong = (i, j)
-                            break
+                    if node.dalamTujuan(index, i, j) and papan[i][j] == 0:
+                        kosong = (i, j)
+                        break
 
         return kosong
 

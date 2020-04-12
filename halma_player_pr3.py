@@ -48,9 +48,9 @@ class HalmaPlayer02:
 
         # ubah urutan b0 berdasar stage sekarang
         if self.stage == 0:  # stage nol dari depan dulu
-            # b0 = sorted(b0, key=lambda b: math.sqrt((x[0] - b[0])**2 + (x[1] - b[1])**2))
-            if index == 0:
-                b0.reverse()
+            b0 = sorted(b0, key=lambda b: math.sqrt((x[0] - b[0])**2 + (x[1] - b[1])**2))
+            # if index == 0:
+            #     b0.reverse()
         elif self.stage < 4: # stage 1-3 mulai dari belakang
             b0 = sorted(b0, key=lambda b: math.sqrt((x[0] - b[0])**2 + (x[1] - b[1])**2),  reverse=True)
         else:  # stage 4 pilih acak
@@ -326,7 +326,7 @@ class HalmaPlayer02:
 
         # bobot
         w0 = -0.5
-        w1 = 10
+        w1 = 20
 
         # A* = h + g
         score += w0 * self.evalManhattan(node, self.index)
@@ -358,9 +358,8 @@ class HalmaPlayer02:
 
         for i in range(len(papan)):
             for j in range(len(papan[i])):
-                if papan[i][j] // 100 == giliran + 1:
-                    if node.dalamTujuan(giliran, i, j):
-                        score += 1
+                if node.dalamTujuan(giliran, i, j) and papan[i][j] // 100 == (giliran + 1):
+                    score += 1
 
         return score
 
@@ -372,17 +371,15 @@ class HalmaPlayer02:
         if index == 1:
             for i in range(len(papan)):
                 for j in range(len(papan[i])):
-                    if papan[i][j] == 0:
-                        if node.dalamTujuan(index, i, j):
-                            kosong = (i, j)
-                            break
+                    if node.dalamTujuan(index, i, j) and papan[i][j] == 0:
+                        kosong = (i, j)
+                        break
         else:
             for i in reversed(range(len(papan))):
                 for j in reversed(range(len(papan[i]))):
-                    if papan[i][j] == 0:
-                        if node.dalamTujuan(index, i, j):
-                            kosong = (i, j)
-                            break
+                    if node.dalamTujuan(index, i, j) and papan[i][j] == 0:
+                        kosong = (i, j)
+                        break
 
         return kosong
 
