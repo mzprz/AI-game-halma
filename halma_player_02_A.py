@@ -218,7 +218,7 @@ class HalmaPlayer02:
         loncat_buffer = []
         baris = 1
         stopCheck = False
-        memory = (0, 0)
+        memory = []
 
         baris = 0
         while stopCheck == False:

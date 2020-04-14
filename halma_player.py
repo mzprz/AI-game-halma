@@ -75,7 +75,7 @@ class HalmaPlayer:
         loncat_buffer = []
         baris = 1
         stopCheck = False
-        memory = (0,0)
+        memory = []
 
         ip = self.index;
 
@@ -171,22 +171,22 @@ class HalmaPlayer:
     # [(x2, y2)] = posisi tujuan (array, isi 1 kalau geser, isi banyak kalau loncat)
     def main(self, model):
         pass
-        # papan = model.getPapan()
-        # b0 = model.getPosisiBidak(self.index)
-        # print("--------")
-        # print("netnot", self.index)
-        # for b in b0:
-        #     g,l = self.bisaMain(model, papan, b[0], b[1])
-        #     print("B", b)
-        #     print("Geser : ", g)
-        #     print("Loncat: ", l)
-        #     # time.sleep(1)
-        #     if l != [] :
-        #         if type(l[0]!= tuple):
-        #             print("MAGNIFICO", l[0])
-        #         return (l[0], b, model.A_LONCAT) if type(l[0]) != tuple else ([l[0]], b, model.A_LONCAT)
-        #     if g != [] :
-        #         pass
-        #         return g, b, model.A_GESER
-        #
-        #     return None, None, model.A_BERHENTI
+        papan = model.getPapan()
+        b0 = model.getPosisiBidak(self.index)
+        print("--------")
+        print("netnot", self.index)
+        for b in b0:
+            g,l = self.bisaMain(model, papan, b[0], b[1])
+            print("B", b)
+            print("Geser : ", g)
+            print("Loncat: ", l)
+            time.sleep(1)
+            # if l != [] :
+            #     if type(l[0]!= tuple):
+            #         print("MAGNIFICO", l[0])
+            #     return (l[0], b, model.A_LONCAT) if type(l[0]) != tuple else ([l[0]], b, model.A_LONCAT)
+            # if g != [] :
+            #     pass
+            #     return g, b, model.A_GESER
+            #
+            # return None, None, model.A_BERHENTI
