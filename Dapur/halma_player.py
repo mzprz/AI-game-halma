@@ -61,7 +61,7 @@ class HalmaPlayer:
         # to match the format specified
 
         loncat2 = self.sortLoncat(loncat)
-
+        loncat2 = sorted(loncat2, key=lambda l: len(l), reverse=True)
         # print(x1, y1)
         # print(loncat2)
         # print("--------")
@@ -149,7 +149,7 @@ class HalmaPlayer:
                                     loncat2.append(loncat[i][j]["xy"])
 
                     buffer2 = buffer[::-1]
-
+                    
                     loncat2.append(buffer2)
 
                     for i in range(1,len(buffer2)):

@@ -9,6 +9,7 @@ class HalmaPlayer02:
     deskripsi = "Kelompok 2 (13316017 - 13316079 - 13316087)"
     nomor = 1
     index = 0
+    teman = None
     papan = []
 
 # 1. FUNGSI INIT --------------------------------------------------------------
@@ -16,12 +17,13 @@ class HalmaPlayer02:
         self.nama = nama
 
         self._ply = 2
-        self._childMax = 50
+        self._childMax = 100
         self.pilihan = []
 
         self.moveCount = 0
         self.stage = 0
         self.lastScore = 0
+        self.lastScore2 = 0
 
         self.setup = True
         self.nkotak = 0
@@ -30,6 +32,10 @@ class HalmaPlayer02:
     def setNomor(self, nomor):
         self.nomor = nomor
         self.index = nomor - 1
+        self.Iteman = (self.index + 2)%4
+
+    def setTeman(self, p1):
+        self.teman = p1
 
     # To copy a class ~1.6x faster than copy.deepcopy()
     # https://stackoverflow.com/questions/24756712/deepcopy-is-extremely-slow/29385667#29385667
@@ -38,11 +44,11 @@ class HalmaPlayer02:
 
 # 2. FUNGSI CARI CABANG -------------------------------------------------------
     # Mencari cabang suatu node
-    def cariCabang(self, model, maxPlayer, ketat):
+    def cariCabang(self, model, index, ketat):
         # inisialisasi
         cabang = []
         papan = model.getPapan()
-        index = self.index if maxPlayer else 1 - self.index
+        # index = self.index if maxPlayer else 1 - self.index
         x = self.getTarget(index)
         b0 = model.getPosisiBidak(index)
 
@@ -60,7 +66,7 @@ class HalmaPlayer02:
         for b in b0:
             # stage 0 usahakan semua telah keluar dari daerah asal dulu
             if self.stage == 0:
-                if ketat and not model.dalamTujuan(1 - index, b[0], b[1]):
+                if ketat and not model.dalamTujuan(self.Iteman, b[0], b[1]):
                     continue
 
             # dapatkan langkah geser dan loncat yang mungkin
@@ -77,7 +83,7 @@ class HalmaPlayer02:
                 if ketat:
                     # jangan balik ke kandang
                     if self.stage > 0:
-                        if model.dalamTujuan(1 - index, tujuan[0][0], tujuan[0][1]):
+                        if model.dalamTujuan(self.Iteman, tujuan[0][0], tujuan[0][1]):
                             continue
 
                     # dahulukan kalau dari luar daerah tujuan bisa masuk ke daerah tujuan
@@ -128,7 +134,7 @@ class HalmaPlayer02:
                 if ketat:
                     # jangan balik ke kandang
                     if self.stage > 0:
-                        if model.dalamTujuan(1 - index, tujuan[0], tujuan[1]):
+                        if model.dalamTujuan(self.Iteman, tujuan[0], tujuan[1]):
                             continue
 
                     # dahulukan kalau dari luar daerah tujuan bisa masuk ke daerah tujuan
@@ -171,7 +177,7 @@ class HalmaPlayer02:
 
         # kalau ternyata ga dapat cabang, longgarkan aturan
         if cabang == []:
-            cabang = self.cariCabang(model, maxPlayer, False)
+            cabang = self.cariCabang(model, index, False)
 
         return cabang
 
@@ -302,7 +308,7 @@ class HalmaPlayer02:
     # mensimulasikan next step kalo disi)ilakukan aksi tertentu thd papan
     def nextStep(self, model2, tujuan, asal, aksi, index):
         # sesuaikan giliran
-        if model2.getGiliran() != index:
+        while model2.getGiliran() != index:
             model2.ganti(0)
 
         if (aksi == model2.A_LONCAT):
@@ -331,7 +337,9 @@ class HalmaPlayer02:
 
         # A* = h + g
         score += w0 * self.evalEuclidian(node, self.index)
+        score += w0 * self.evalEuclidian(node, self.Iteman)
         score += w1 * (self.evalFuncTarget(node, self.index) - self.lastScore)
+        score += w1 * (self.evalFuncTarget(node, self.Iteman) - self.lastScore2)
 
         return score
 
@@ -392,7 +400,11 @@ class HalmaPlayer02:
         if index == 0:
             x = (self.nkotak-1, self.nkotak-1)
         elif index == 1:
+            x = (self.nkotak-1, 0)
+        elif index == 2:
             x = (0, 0)
+        elif index == 3:
+            x = (0, self.nkotak-1)
         return x
 
     # Mengonversi papan menjadi biner 1 / 0 sehingga mudah diolah
@@ -404,10 +416,10 @@ class HalmaPlayer02:
             for j in range(len(papan)):
                 if int(str(papan[i][j])[:1]) == giliran + 1:
                     papan_biner[i][j] = a
-                elif int(str(papan[i][j])[:1]) == 1 - giliran + 1:
-                    papan_biner[i][j] = b
+                # elif int(str(papan[i][j])[:1]) == 1 - giliran + 1:
+                #     papan_biner[i][j] = b
                 else:
-                    papan_biner[i][j] = 0
+                    papan_biner[i][j] = b
         return papan_biner
 
 # 4. FUNGSI MINIMAX + PRUNING -------------------------------------------------
@@ -419,7 +431,7 @@ class HalmaPlayer02:
 
         if maxPlayer:
             maxEval = -9999
-            cabang = self.cariCabang(position, True, True)
+            cabang = self.cariCabang(position, abs(self._ply-depth+self.index)%4, True)
             childCount = 0
             for child in cabang:
                 if childCount < self._childMax:
@@ -438,7 +450,7 @@ class HalmaPlayer02:
             return maxEval
         else:
             minEval = 9999
-            cabang = self.cariCabang(position, False, True)
+            cabang = self.cariCabang(position, abs(self._ply-depth+self.index)%4, True)
             childCount = 0
             for child in cabang:
                 if childCount < self._childMax:
@@ -457,6 +469,7 @@ class HalmaPlayer02:
         if self.setup:
             self.nkotak = model.getUkuran()
             self.nbidak = model.getJumlahBidak()
+            self.Iteman = (self.index + 2)%4
             self.setup = False
 
         # indicate stages based on number of moves so far
@@ -486,7 +499,10 @@ class HalmaPlayer02:
             # update last score
             self.lastScore = self.evalFuncTarget(self.nextStep(
                 initPos, self.pilihan[pilih][0], self.pilihan[pilih][1], self.pilihan[pilih][2], self.index), self.index)
-            if self.lastScore >= self.nbidak / 2:
+            self.lastScore2 = self.evalFuncTarget(self.nextStep(
+                initPos, self.pilihan[pilih][0], self.pilihan[pilih][1], self.pilihan[pilih][2], self.index), self.Iteman)
+
+            if self.lastScore >= self.nbidak / 2 or self.lastScore2 >= self.nbidak / 2:
                 self.stage = 4
 
             # return stuffs

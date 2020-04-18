@@ -35,3 +35,7 @@ How to avoid redundant moves ?
 
 _pr2 -> eval func berupa delta dari state sebelumnya
 Score Target di delta in, jadi kalo ada move yang ga bikin nambah tujuan, mending move yang bikin naik centroid
+
+kalau stage 4 ply jadi 1
+untuk apa kalau ply nya genap ??
+Memprediksi gerakan lawan ga berpengaruh ke eval func ?

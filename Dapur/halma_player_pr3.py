@@ -16,7 +16,7 @@ class HalmaPlayer02:
         self.nama = nama
 
         self._ply = 2
-        self._childMax = 50
+        self._childMax = 20
         self.pilihan = []
 
         self.moveCount = 0
@@ -100,7 +100,7 @@ class HalmaPlayer02:
                         if model.dalamTujuan(index, asal[0], asal[1]):
                             continue
 
-                    # ambil gerakan yang pasti mengurangi Euclidian distance
+                    # ambil gerakan yang pasti mengurangi manhattan distance
                     asalCent = math.sqrt((x[0] - asal[0])**2 + (x[1] - asal[1])**2)
                     tujuanCent = math.sqrt((x[0] - tujuan[0][0])**2 + (x[1] - tujuan[0][1])**2)
                     if asalCent > tujuanCent:
@@ -151,7 +151,7 @@ class HalmaPlayer02:
                         if model.dalamTujuan(index, asal[0], asal[1]):
                             continue
 
-                    # ambil gerakan yang pasti mengurangi Euclidian distance
+                    # ambil gerakan yang pasti mengurangi manhattan distance
                     asalCent = math.sqrt((x[0] - asal[0])**2 + (x[1] - asal[1])**2)
                     tujuanCent = math.sqrt((x[0] - tujuan[0])**2 + (x[1] - tujuan[1])**2)
                     if asalCent > tujuanCent:
@@ -211,7 +211,7 @@ class HalmaPlayer02:
         # to match the format specified
         loncat2 = self.sortLoncat(loncat)
         loncat2 = sorted(loncat2, key=lambda l: len(l), reverse=True)
-
+        
         return geser, loncat2
 
     # Mencari loncatan lanjutan
@@ -330,28 +330,25 @@ class HalmaPlayer02:
         w1 = 20
 
         # A* = h + g
-        score += w0 * self.evalEuclidian(node, self.index)
+        score += w0 * self.evalManhattan(node, self.index)
         score += w1 * (self.evalFuncTarget(node, self.index) - self.lastScore)
 
         return score
 
-    # Fungsi Evaluasi Euclidian Distance (Heuristik)
-    def evalEuclidian(self, node, giliran):
+    # Fungsi Evaluasi Manhattan Distance (Heuristik)
+    def evalManhattan(self, node, giliran):
         b0 = node.getPosisiBidak(giliran)
         c = 0
 
-        # Target Euclidian adalah ujung kotak tempat tujuan
+        # Target manhattan adalah ujung kotak tempat tujuan
         x = self.getTarget(giliran)
 
-        # Kalau stage lanjutan, maka target Euclidian diganti jadi salah satu kotak kosong
+        # Kalau stage lanjutan, maka target manhattan diganti jadi salah satu kotak kosong
         if self.stage > 2 and self.cariKosong(node, giliran) != []:
             x = self.cariKosong(node, giliran)
 
         for b in b0:
-            if node.dalamTujuan(giliran, b[0],b[1]):
-                c += 0
-            else:
-                c += math.sqrt((x[0] - b[0])**2 + (x[1] - b[1])**2)
+            c += math.sqrt((x[0] - b[0])**2 + (x[1] - b[1])**2)
 
         return c
 
