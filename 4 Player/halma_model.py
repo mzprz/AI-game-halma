@@ -9,13 +9,13 @@ Congklak Board Game
 
 import time
 
-N_KOTAK = 12
-N_BIDAK = 13
+N_KOTAK = 10
+N_BIDAK = 10
 
-ASAL_10_13_0=[(0,0),(0,1),(1,0),(0,2),(1,1),(2,0),(0,3),(1,2),(2,1),(3,0),(1,3),(2,2),(3,1)]
-ASAL_10_13_1=[(0,N_KOTAK-1),(0,N_KOTAK-2),(1,N_KOTAK-1),(0,N_KOTAK-3),(1,N_KOTAK-2),(2,N_KOTAK-1),(0,N_KOTAK-4),(1,N_KOTAK-3),(2,N_KOTAK-2),(3,N_KOTAK-1),(1,N_KOTAK-4),(2,N_KOTAK-3),(3,N_KOTAK-2)]
-ASAL_10_13_2=[(N_KOTAK-1,N_KOTAK-1),(N_KOTAK-1,N_KOTAK-2),(N_KOTAK-2,N_KOTAK-1),(N_KOTAK-1,N_KOTAK-3),(N_KOTAK-2,N_KOTAK-2),(N_KOTAK-3,N_KOTAK-1),(N_KOTAK-1,N_KOTAK-4),(N_KOTAK-2,N_KOTAK-3),(N_KOTAK-3,N_KOTAK-2),(N_KOTAK-4,N_KOTAK-1),(N_KOTAK-2,N_KOTAK-4),(N_KOTAK-3,N_KOTAK-3),(N_KOTAK-4,N_KOTAK-2)]
-ASAL_10_13_3=[(N_KOTAK-1,0),(N_KOTAK-1,1),(N_KOTAK-2,0),(N_KOTAK-1,2),(N_KOTAK-2,1),(N_KOTAK-3,0),(N_KOTAK-1,3),(N_KOTAK-2,2),(N_KOTAK-3,1),(N_KOTAK-4,0),(N_KOTAK-2,3),(N_KOTAK-3,2),(N_KOTAK-4,1)]
+ASAL_10_10_0=[(0,0),(0,1),(1,0),(0,2),(1,1),(2,0),(0,3),(1,2),(2,1),(3,0)]
+ASAL_10_10_1=[(0,9),(0,8),(1,9),(0,7),(1,8),(2,9),(0,6),(1,7),(2,8),(3,9)]
+ASAL_10_10_2=[(9,9),(9,8),(8,9),(9,7),(8,8),(7,9),(9,6),(8,7),(7,8),(6,9)]
+ASAL_10_10_3=[(9,0),(9,1),(8,0),(9,2),(8,1),(7,0),(9,3),(8,2),(7,1),(6,0)]
 
 
 class HalmaModel:
@@ -50,8 +50,8 @@ class HalmaModel:
     def awal(self, p1, p2, p3, p4):
         self.__nkotak = N_KOTAK
         self.__nbidak = N_BIDAK
-        self.__asal = [ASAL_10_13_0, ASAL_10_13_1, ASAL_10_13_2, ASAL_10_13_3]
-        self.__tujuan = [ASAL_10_13_2, ASAL_10_13_3, ASAL_10_13_0, ASAL_10_13_1]
+        self.__asal = [ASAL_10_10_0, ASAL_10_10_1, ASAL_10_10_2, ASAL_10_10_3]
+        self.__tujuan = [ASAL_10_10_2, ASAL_10_10_3, ASAL_10_10_0, ASAL_10_10_1]
         self.__npemain = 4
         self.__pemain = [p1, p2, p3, p4]
         self.__giliran = 0
@@ -70,9 +70,6 @@ class HalmaModel:
     def getUkuran(self):
         return self.__nkotak
 
-    def getTeman(self, index):
-        return (index+2)%4
-
     # mengembalikan jumlah pemain
     def getJumlahPemain(self):
         return self.__npemain
@@ -81,6 +78,12 @@ class HalmaModel:
     # ip = index pemain 0 - 3
     def getPemain(self, ip):
         return self.__pemain[ip]
+
+    # mengembalikan teman
+    # ip = index pemain 0 - 3
+    def getTeman(self, ip):
+        t = self.__teman[ip]
+        return t
 
     # mengembalikan giliran (berupa index pemain)
     def getGiliran(self):

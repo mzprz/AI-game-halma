@@ -37,7 +37,7 @@ class HalmaViewGui(HalmaView):
         self.thePiece = 0
         self.gameStatus = False
         self.giliran = 1
-        self.nkotak = 12
+        self.nkotak = 10
         self.linewidth = 40/self.nkotak #if(self.nkotak == 10) else 2.5 if(self.nkotak == 16) else 0
 
         ### ----- INITILIAZE pygame ----- ###
