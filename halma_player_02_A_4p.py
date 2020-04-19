@@ -4,10 +4,11 @@ import random
 import gc
 import math
 
+# based on pr4
 class HalmaPlayer02:
-    nama = "Pemain"
+    nama = "Pemain 4 Player"
     deskripsi = "Kelompok 2 (13316017 - 13316079 - 13316087)"
-    nomor = 1
+    nomor = 2
     index = 0
     teman = None
     papan = []
@@ -44,7 +45,7 @@ class HalmaPlayer02:
 
 # 2. FUNGSI CARI CABANG -------------------------------------------------------
     # Mencari cabang suatu node
-    def cariCabang(self, model, index, ketat):
+    def cariCabang(self, model, index, ketat, n):
         # inisialisasi
         cabang = []
         papan = model.getPapan()
@@ -83,13 +84,13 @@ class HalmaPlayer02:
                 if ketat:
                     # jangan balik ke kandang
                     if self.stage > 0:
-                        if model.dalamTujuan(self.Iteman, tujuan[0][0], tujuan[0][1]):
+                        if model.dalamTujuan(self.Iteman, tujuan[-1][0], tujuan[-1][1]):
                             continue
 
                     # dahulukan kalau dari luar daerah tujuan bisa masuk ke daerah tujuan
                     # kalau gabisa asal perpindahannya masih di dalem oke2 aja
                     if not model.dalamTujuan(index, asal[0], asal[1]):
-                        if model.dalamTujuan(index, tujuan[0][0], tujuan[0][1]):
+                        if model.dalamTujuan(index, tujuan[-1][0], tujuan[-1][1]):
                             pass
                     else:
                         # kalau stage awal jangan ambil yang asalnya dari daerah tujuan
@@ -98,7 +99,7 @@ class HalmaPlayer02:
                             continue
                         else:
                             # kalau pindahnya keluar daerah tujuan maka jangan diambil
-                            if not model.dalamTujuan(index, tujuan[0][0], tujuan[0][1]):
+                            if not model.dalamTujuan(index, tujuan[-1][0], tujuan[-1][1]):
                                 continue
 
                     # kalau stage akhir kalau asalnya dari dalam daerah tujuan jgn diambil
@@ -108,7 +109,7 @@ class HalmaPlayer02:
 
                     # ambil gerakan yang pasti mengurangi Euclidian distance
                     asalCent = math.sqrt((x[0] - asal[0])**2 + (x[1] - asal[1])**2)
-                    tujuanCent = math.sqrt((x[0] - tujuan[0][0])**2 + (x[1] - tujuan[0][1])**2)
+                    tujuanCent = math.sqrt((x[0] - tujuan[-1][0])**2 + (x[1] - tujuan[-1][1])**2)
                     if asalCent > tujuanCent:
                         pass
                     else:
@@ -119,7 +120,7 @@ class HalmaPlayer02:
                     cabang.append((nextNode, tujuan, asal, aksi))
                 else: # aturan versi rileks
                     # kalau pindah dari daerah tujuan ke daerah luar jangan diambil
-                    if model.dalamTujuan(index, asal[0], asal[1]) and not model.dalamTujuan(index, tujuan[0][0], tujuan[0][1]):
+                    if model.dalamTujuan(index, asal[0], asal[1]) and not model.dalamTujuan(index, tujuan[-1][0], tujuan[-1][1]):
                         continue
                     nextNode = self.nextStep(node, tujuan, asal, aksi, index)
                     cabang.append((nextNode, tujuan, asal, aksi))
@@ -175,9 +176,12 @@ class HalmaPlayer02:
                     nextNode = self.nextStep(node, tujuan, asal, aksi, index)
                     cabang.append((nextNode, tujuan, asal, aksi))
 
+        if self.lastScore == self.nbidak:
+            return []
+
         # kalau ternyata ga dapat cabang, longgarkan aturan
-        if cabang == []:
-            cabang = self.cariCabang(model, index, False)
+        if cabang == [] and n<1:
+            cabang = self.cariCabang(model, index, False, n+1)
 
         return cabang
 
@@ -208,7 +212,7 @@ class HalmaPlayer02:
                                     loncat[baris].update(
                                         {kolom: {"xy": (x3, y3)}})
                                 except:
-                                    loncat[baris] = {kolom: {"xy": (x3, y3)}}
+                                    loncat[baris] = {kolom: {"xy": (x3, y3), "parent":(x1,y1)}}
                                 kolom += 1
 
         loncat = self.loncatanPlus(model, papan, loncat, ip)
@@ -217,6 +221,9 @@ class HalmaPlayer02:
         # to match the format specified
         loncat2 = self.sortLoncat(loncat)
         loncat2 = sorted(loncat2, key=lambda l: len(l), reverse=True)
+
+        # print("GESER", geser)
+        # print("LONCAT", loncat2)
 
         return geser, loncat2
 
@@ -236,6 +243,7 @@ class HalmaPlayer02:
                     x1 = loncat[baris][i]["xy"][0]
                     y1 = loncat[baris][i]["xy"][1]
                     dTujuan = model.dalamTujuan(ip, x1, y1)
+                    memory.append( loncat[baris][i]["parent"])
                     for a in model.ARAH:
                         x2 = x1 + a[0]
                         y2 = y1 + a[1]
@@ -377,7 +385,7 @@ class HalmaPlayer02:
 
     # Fungsi untuk mencari kotak yang kosong di daerah tujuan
     def cariKosong(self, node, index):
-        index = self.index
+        # index = self.index
         papan = self.papanBiner(node, index, 1, 0)
         kosong = []
         if index == 1:
@@ -431,7 +439,7 @@ class HalmaPlayer02:
 
         if maxPlayer:
             maxEval = -9999
-            cabang = self.cariCabang(position, abs(self._ply-depth+self.index)%4, True)
+            cabang = self.cariCabang(position, abs(self._ply-depth+self.index)%4, True,0)
             childCount = 0
             for child in cabang:
                 if childCount < self._childMax:
@@ -450,7 +458,7 @@ class HalmaPlayer02:
             return maxEval
         else:
             minEval = 9999
-            cabang = self.cariCabang(position, abs(self._ply-depth+self.index)%4, True)
+            cabang = self.cariCabang(position, abs(self._ply-depth+self.index)%4, True,0)
             childCount = 0
             for child in cabang:
                 if childCount < self._childMax:
@@ -511,4 +519,5 @@ class HalmaPlayer02:
             else:
                 return [self.pilihan[pilih][0]], self.pilihan[pilih][1], self.pilihan[pilih][2]
         else:
+            print("MANDEG", self.index)
             return None, None, model.A_BERHENTI

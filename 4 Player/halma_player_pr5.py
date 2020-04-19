@@ -5,7 +5,7 @@ import gc
 import math
 
 class HalmaPlayer02:
-    nama = "Pemain"
+    nama = "Pemain 4 Player"
     deskripsi = "Kelompok 2 (13316017 - 13316079 - 13316087)"
     nomor = 2
     index = 0
@@ -16,8 +16,8 @@ class HalmaPlayer02:
     def __init__(self, nama):
         self.nama = nama
 
-        self._ply = 3
-        self._childMax = 10
+        self._ply = 2
+        self._childMax = 100
         self.pilihan = []
 
         self.moveCount = 0
@@ -344,7 +344,7 @@ class HalmaPlayer02:
 
         # A* = h + g
         score += w0 * self.evalEuclidian(node, self.index)
-        score += w0 * self.evalEuclidian(node, self.Iteman)
+        # score += w0 * self.evalEuclidian(node, self.Iteman)
         score += w1 * (self.evalFuncTarget(node, self.index) - self.lastScore)
         # score += w1 * (self.evalFuncTarget(node, self.Iteman) - self.lastScore2)
 
@@ -384,7 +384,7 @@ class HalmaPlayer02:
 
     # Fungsi untuk mencari kotak yang kosong di daerah tujuan
     def cariKosong(self, node, index):
-        index = self.index
+        # index = self.index
         papan = self.papanBiner(node, index, 1, 0)
         kosong = []
         if index == 1:

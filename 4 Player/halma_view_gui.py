@@ -32,17 +32,17 @@ class HalmaViewGui(HalmaView):
     # Constructor
     def __init__(self, title):
         super().__init__(title)
-        
+
         self.positions = {}
         self.thePiece = 0
         self.gameStatus = False
         self.giliran = 1
-        
+
         ### ----- INITILIAZE pygame ----- ###
         pygame.init()
         self.screen = pygame.display.set_mode((1280, 680))
         pygame.display.set_caption(title)
-    
+
         # UI Variables
         ### ----- CREATE GAME OBJECTS ----- ###
         # Create board with gridlines
@@ -60,14 +60,14 @@ class HalmaViewGui(HalmaView):
             s.fill(dark_grey)
             pygame.draw.circle(s, pcolors[i], (29, 29), 25)
             self.pieces.append(s)
-            
+
         # CREATE PLAYER INFORMATION
         self.playerInformation = pygame.Surface((400, 576))
         self.playerInformation.fill(white)
         ## Create font objects
         self.font = pygame.font.Font('freesansbold.ttf', 32) # (font file, size)
         self.fontSmall = pygame.font.Font('freesansbold.ttf', 16)
-        ## Create text suface objects, 
+        ## Create text suface objects,
         self.tPlayerTurn = self.font.render('PLAYER ' + str(self.giliran) + ' TURN', True, blue, green)
         self.tPlayer1 = self.fontSmall.render('PLAYER1', True, green, blue) #(the text, True, text colour, background color)
         self.tPlayer1Name = self.font.render('AMBIS', True, green, blue)
@@ -80,30 +80,30 @@ class HalmaViewGui(HalmaView):
         self.bExit = self.font.render('EXIT', True, green, blue)
         ## Create rectangular border for the objects
         self.tPlayerTurnR = self.tPlayerTurn.get_rect()
-        self.tPlayer1R = self.tPlayer1.get_rect() 
-        self.tPlayer1NameR = self.tPlayer1Name.get_rect() 
-        self.tPlayer1PointsR = self.tPlayer1Points.get_rect() 
-        self.tPlayer2R = self.tPlayer2.get_rect() 
-        self.tPlayer2NameR = self.tPlayer2Name.get_rect() 
-        self.tPlayer2PointsR = self.tPlayer2Points.get_rect() 
+        self.tPlayer1R = self.tPlayer1.get_rect()
+        self.tPlayer1NameR = self.tPlayer1Name.get_rect()
+        self.tPlayer1PointsR = self.tPlayer1Points.get_rect()
+        self.tPlayer2R = self.tPlayer2.get_rect()
+        self.tPlayer2NameR = self.tPlayer2Name.get_rect()
+        self.tPlayer2PointsR = self.tPlayer2Points.get_rect()
         #-----#
         self.bStartR = self.bStart.get_rect()
         self.bExitR = self.bExit.get_rect()
-        ## Set the center of the rectangular object. 
+        ## Set the center of the rectangular object.
         self.tPlayerTurnR.center = (640, 30)
-        self.tPlayer1R = (800, 80) 
-        self.tPlayer1NameR.center = (1000, 112 + 16) 
-        self.tPlayer1PointsR = (800, 144) 
-        self.tPlayer2R = (800, 176) 
-        self.tPlayer2NameR.center = (1000, 208 + 16) 
-        self.tPlayer2PointsR = (800, 240) 
+        self.tPlayer1R = (800, 80)
+        self.tPlayer1NameR.center = (1000, 112 + 16)
+        self.tPlayer1PointsR = (800, 144)
+        self.tPlayer2R = (800, 176)
+        self.tPlayer2NameR.center = (1000, 208 + 16)
+        self.tPlayer2PointsR = (800, 240)
         #-----#
         self.bStartR = (800, 540)
         self.bExitR = (1000, 540)
-    
+
 
     def gambarPapan(self):
-        self.screen.blit(self.board, (105, 60))       
+        self.screen.blit(self.board, (105, 60))
 
     def gambarBidak(self, model):
         nkotak = model.getUkuran()
@@ -120,7 +120,7 @@ class HalmaViewGui(HalmaView):
         # RENDER THE GAME
         # Clear the screen
         self.screen.fill(black)
-        
+
         self.gambarPapan()
         self.gambarBidak(model)
 
@@ -141,7 +141,7 @@ class HalmaViewGui(HalmaView):
     # tampilkan pemain yang aktif
     def tampilMulai(self, model):
         super().tampilMulai(model)
-            
+
     # tampilkan geser
     def tampilGeser(self, model, x1, y1, x2, y2):
         super().tampilGeser(model, x1, y1, x2, y2)
@@ -156,16 +156,15 @@ class HalmaViewGui(HalmaView):
         self.gambarBidak(model)
         pygame.display.update()
 
-    # tampilkan pemain selesai aktif        
+    # tampilkan pemain selesai aktif
     # dan sisa waktu
     def tampilHenti(self, model):
         super().tampilHenti(model)
 
-    # tampilkan pergantian pemain        
+    # tampilkan pergantian pemain
     def tampilGanti(self, model):
         super().tampilGanti(model)
 
     # tampilkan game selesai
     def tampilAkhir(self, model, status):
         super().tampilAkhir(model, status)
-    

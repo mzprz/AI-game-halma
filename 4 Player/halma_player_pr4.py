@@ -5,7 +5,7 @@ import gc
 import math
 
 class HalmaPlayer02:
-    nama = "Pemain"
+    nama = "Pemain 4 Player"
     deskripsi = "Kelompok 2 (13316017 - 13316079 - 13316087)"
     nomor = 2
     index = 0
@@ -23,7 +23,7 @@ class HalmaPlayer02:
         self.moveCount = 0
         self.stage = 0
         self.lastScore = 0
-        # self.lastScore2 = 0
+        self.lastScore2 = 0
 
         self.setup = True
         self.nkotak = 0
@@ -346,7 +346,7 @@ class HalmaPlayer02:
         score += w0 * self.evalEuclidian(node, self.index)
         score += w0 * self.evalEuclidian(node, self.Iteman)
         score += w1 * (self.evalFuncTarget(node, self.index) - self.lastScore)
-        # score += w1 * (self.evalFuncTarget(node, self.Iteman) - self.lastScore2)
+        score += w1 * (self.evalFuncTarget(node, self.Iteman) - self.lastScore2)
 
         return score
 
@@ -384,7 +384,7 @@ class HalmaPlayer02:
 
     # Fungsi untuk mencari kotak yang kosong di daerah tujuan
     def cariKosong(self, node, index):
-        index = self.index
+        # index = self.index
         papan = self.papanBiner(node, index, 1, 0)
         kosong = []
         if index == 1:
@@ -506,10 +506,10 @@ class HalmaPlayer02:
             # update last score
             self.lastScore = self.evalFuncTarget(self.nextStep(
                 initPos, self.pilihan[pilih][0], self.pilihan[pilih][1], self.pilihan[pilih][2], self.index), self.index)
-            # self.lastScore2 = self.evalFuncTarget(self.nextStep(
-            #     initPos, self.pilihan[pilih][0], self.pilihan[pilih][1], self.pilihan[pilih][2], self.index), self.Iteman)
+            self.lastScore2 = self.evalFuncTarget(self.nextStep(
+                initPos, self.pilihan[pilih][0], self.pilihan[pilih][1], self.pilihan[pilih][2], self.index), self.Iteman)
 
-            if self.lastScore >= self.nbidak / 2: #or self.lastScore2 >= self.nbidak / 2:
+            if self.lastScore >= self.nbidak / 2 or self.lastScore2 >= self.nbidak / 2:
                 self.stage = 4
 
             # return stuffs
