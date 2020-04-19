@@ -40,12 +40,12 @@ def halma4(p1, p2, p3, p4):
                 if (valid == model.S_OK):
                     layar.tampilLoncat(model, asal[0], asal[1], xy[0], xy[1])
                 asal = xy
-                time.sleep(0.01)
+                time.sleep(0.1)
         elif (aksi == model.A_GESER):
             valid = model.mainGeser(asal[0], asal[1], tujuan[0][0], tujuan[0][1])
             if (valid == model.S_OK):
                 layar.tampilGeser(model, asal[0], asal[1], tujuan[0][0], tujuan[0][1])
-            time.sleep(0.01)
+            time.sleep(0.1)
         else:
             layar.tampilHenti(model)
         if model.akhirBeregu():
@@ -58,10 +58,10 @@ def halma4(p1, p2, p3, p4):
     time.sleep(1)
     pygame.quit();
 
-p1=pr5("REGU-01")
-p2=pr4("REGU-02")
-p3=pr5("REGU-03")
-p4=pr4("REGU-04")
+p1=pr4("REGU-01")
+p2=pr5("REGU-02")
+p3=pr4("REGU-03")
+p4=pr5("REGU-04")
 
 p1.setTeman(p3)
 p2.setTeman(p4)

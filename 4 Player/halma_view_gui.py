@@ -37,6 +37,8 @@ class HalmaViewGui(HalmaView):
         self.thePiece = 0
         self.gameStatus = False
         self.giliran = 1
+        self.nkotak = 12
+        self.linewidth = 40/self.nkotak #if(self.nkotak == 10) else 2.5 if(self.nkotak == 16) else 0
 
         ### ----- INITILIAZE pygame ----- ###
         pygame.init()
@@ -48,17 +50,17 @@ class HalmaViewGui(HalmaView):
         # Create board with gridlines
         self.board = pygame.Surface((616, 616))
         self.board.fill(dark_grey)
-        for i in range(1, 10):
-            pygame.draw.rect(self.board, grey, (0, i*58 + (i-1)*4, 616, 4)) # (surface, color, (posisi x, posisi y, lebar, tinggi))
-            pygame.draw.rect(self.board, grey, (i*58 + (i-1)*4, 0, 4, 616))
+        for i in range(1, self.nkotak):
+            pygame.draw.rect(self.board, grey, (0, i*(580/self.nkotak) + (i-1)*self.linewidth, 616, self.linewidth)) # (surface, color, (posisi x, posisi y, lebar, tinggi))
+            pygame.draw.rect(self.board, grey, (i*(580/self.nkotak) + (i-1)*self.linewidth, 0, self.linewidth, 616))
 
         # CREATE PIECES
         ## Create First Player Pieces (Red)
         self.pieces=[]
         for i in range(4):
-            s = pygame.Surface((58, 58))
+            s = pygame.Surface(((580/self.nkotak), (580/self.nkotak)))
             s.fill(dark_grey)
-            pygame.draw.circle(s, pcolors[i], (29, 29), 25)
+            pygame.draw.circle(s, pcolors[i], (int(580/self.nkotak/2), int(580/self.nkotak/2)), int(580/self.nkotak/2 - 3))
             self.pieces.append(s)
 
         # CREATE PLAYER INFORMATION
@@ -112,7 +114,7 @@ class HalmaViewGui(HalmaView):
                 bxy = model.getBidak(x,y)
                 if (bxy > 0):
                     p = (bxy // 100) - 1
-                    self.screen.blit(self.pieces[p], (105 + x*62, 60 + y*62))
+                    self.screen.blit(self.pieces[p], (105 + x*((580/self.nkotak)+self.linewidth), 60 + y*((580/self.nkotak)+self.linewidth)))
 
     # mulai main 2 pemain
     def tampilAwal(self, model):
