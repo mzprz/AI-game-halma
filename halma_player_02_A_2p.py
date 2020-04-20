@@ -4,13 +4,11 @@ import random
 import gc
 import math
 
-# based on pr4
-class HalmaPlayer02A:
-    nama = "Pemain 4 Player"
+class HalmaPlayer02:
+    nama = "Pemain"
     deskripsi = "Kelompok 2 (13316017 - 13316079 - 13316087)"
-    nomor = 2
+    nomor = 1
     index = 0
-    teman = None
     papan = []
 
 # 1. FUNGSI INIT --------------------------------------------------------------
@@ -18,13 +16,12 @@ class HalmaPlayer02A:
         self.nama = nama
 
         self._ply = 2
-        self._childMax = 100
+        self._childMax = 50
         self.pilihan = []
 
         self.moveCount = 0
         self.stage = 0
         self.lastScore = 0
-        self.lastScore2 = 0
 
         self.setup = True
         self.nkotak = 0
@@ -33,10 +30,6 @@ class HalmaPlayer02A:
     def setNomor(self, nomor):
         self.nomor = nomor
         self.index = nomor - 1
-        self.Iteman = (self.index + 2)%4
-
-    def setTeman(self, p1):
-        self.teman = p1
 
     # To copy a class ~1.6x faster than copy.deepcopy()
     # https://stackoverflow.com/questions/24756712/deepcopy-is-extremely-slow/29385667#29385667
@@ -45,11 +38,11 @@ class HalmaPlayer02A:
 
 # 2. FUNGSI CARI CABANG -------------------------------------------------------
     # Mencari cabang suatu node
-    def cariCabang(self, model, index, ketat, n):
+    def cariCabang(self, model, maxPlayer, ketat):
         # inisialisasi
         cabang = []
         papan = model.getPapan()
-        # index = self.index if maxPlayer else 1 - self.index
+        index = self.index if maxPlayer else 1 - self.index
         x = self.getTarget(index)
         b0 = model.getPosisiBidak(index)
 
@@ -67,7 +60,7 @@ class HalmaPlayer02A:
         for b in b0:
             # stage 0 usahakan semua telah keluar dari daerah asal dulu
             if self.stage == 0:
-                if ketat and not model.dalamTujuan(self.Iteman, b[0], b[1]):
+                if ketat and not model.dalamTujuan(1 - index, b[0], b[1]):
                     continue
 
             # dapatkan langkah geser dan loncat yang mungkin
@@ -84,13 +77,13 @@ class HalmaPlayer02A:
                 if ketat:
                     # jangan balik ke kandang
                     if self.stage > 0:
-                        if model.dalamTujuan(self.Iteman, tujuan[-1][0], tujuan[-1][1]):
+                        if model.dalamTujuan(1 - index, tujuan[0][0], tujuan[0][1]):
                             continue
 
                     # dahulukan kalau dari luar daerah tujuan bisa masuk ke daerah tujuan
                     # kalau gabisa asal perpindahannya masih di dalem oke2 aja
                     if not model.dalamTujuan(index, asal[0], asal[1]):
-                        if model.dalamTujuan(index, tujuan[-1][0], tujuan[-1][1]):
+                        if model.dalamTujuan(index, tujuan[0][0], tujuan[0][1]):
                             pass
                     else:
                         # kalau stage awal jangan ambil yang asalnya dari daerah tujuan
@@ -99,7 +92,7 @@ class HalmaPlayer02A:
                             continue
                         else:
                             # kalau pindahnya keluar daerah tujuan maka jangan diambil
-                            if not model.dalamTujuan(index, tujuan[-1][0], tujuan[-1][1]):
+                            if not model.dalamTujuan(index, tujuan[0][0], tujuan[0][1]):
                                 continue
 
                     # kalau stage akhir kalau asalnya dari dalam daerah tujuan jgn diambil
@@ -109,7 +102,7 @@ class HalmaPlayer02A:
 
                     # ambil gerakan yang pasti mengurangi Euclidian distance
                     asalCent = math.sqrt((x[0] - asal[0])**2 + (x[1] - asal[1])**2)
-                    tujuanCent = math.sqrt((x[0] - tujuan[-1][0])**2 + (x[1] - tujuan[-1][1])**2)
+                    tujuanCent = math.sqrt((x[0] - tujuan[0][0])**2 + (x[1] - tujuan[0][1])**2)
                     if asalCent > tujuanCent:
                         pass
                     else:
@@ -120,7 +113,7 @@ class HalmaPlayer02A:
                     cabang.append((nextNode, tujuan, asal, aksi))
                 else: # aturan versi rileks
                     # kalau pindah dari daerah tujuan ke daerah luar jangan diambil
-                    if model.dalamTujuan(index, asal[0], asal[1]) and not model.dalamTujuan(index, tujuan[-1][0], tujuan[-1][1]):
+                    if model.dalamTujuan(index, asal[0], asal[1]) and not model.dalamTujuan(index, tujuan[0][0], tujuan[0][1]):
                         continue
                     nextNode = self.nextStep(node, tujuan, asal, aksi, index)
                     cabang.append((nextNode, tujuan, asal, aksi))
@@ -135,7 +128,7 @@ class HalmaPlayer02A:
                 if ketat:
                     # jangan balik ke kandang
                     if self.stage > 0:
-                        if model.dalamTujuan(self.Iteman, tujuan[0], tujuan[1]):
+                        if model.dalamTujuan(1 - index, tujuan[0], tujuan[1]):
                             continue
 
                     # dahulukan kalau dari luar daerah tujuan bisa masuk ke daerah tujuan
@@ -176,12 +169,9 @@ class HalmaPlayer02A:
                     nextNode = self.nextStep(node, tujuan, asal, aksi, index)
                     cabang.append((nextNode, tujuan, asal, aksi))
 
-        if self.lastScore == self.nbidak:
-            return []
-
         # kalau ternyata ga dapat cabang, longgarkan aturan
-        if cabang == [] and n<1:
-            cabang = self.cariCabang(model, index, False, n+1)
+        if cabang == []:
+            cabang = self.cariCabang(model, maxPlayer, False)
 
         return cabang
 
@@ -212,7 +202,7 @@ class HalmaPlayer02A:
                                     loncat[baris].update(
                                         {kolom: {"xy": (x3, y3)}})
                                 except:
-                                    loncat[baris] = {kolom: {"xy": (x3, y3), "parent":(x1,y1)}}
+                                    loncat[baris] = {kolom: {"xy": (x3, y3)}}
                                 kolom += 1
 
         loncat = self.loncatanPlus(model, papan, loncat, ip)
@@ -221,9 +211,6 @@ class HalmaPlayer02A:
         # to match the format specified
         loncat2 = self.sortLoncat(loncat)
         loncat2 = sorted(loncat2, key=lambda l: len(l), reverse=True)
-
-        # print("GESER", geser)
-        # print("LONCAT", loncat2)
 
         return geser, loncat2
 
@@ -243,7 +230,6 @@ class HalmaPlayer02A:
                     x1 = loncat[baris][i]["xy"][0]
                     y1 = loncat[baris][i]["xy"][1]
                     dTujuan = model.dalamTujuan(ip, x1, y1)
-                    memory.append( loncat[baris][i]["parent"])
                     for a in model.ARAH:
                         x2 = x1 + a[0]
                         y2 = y1 + a[1]
@@ -316,7 +302,7 @@ class HalmaPlayer02A:
     # mensimulasikan next step kalo disi)ilakukan aksi tertentu thd papan
     def nextStep(self, model2, tujuan, asal, aksi, index):
         # sesuaikan giliran
-        while model2.getGiliran() != index:
+        if model2.getGiliran() != index:
             model2.ganti(0)
 
         if (aksi == model2.A_LONCAT):
@@ -345,9 +331,7 @@ class HalmaPlayer02A:
 
         # A* = h + g
         score += w0 * self.evalEuclidian(node, self.index)
-        score += w0 * self.evalEuclidian(node, self.Iteman)
         score += w1 * (self.evalFuncTarget(node, self.index) - self.lastScore)
-        score += w1 * (self.evalFuncTarget(node, self.Iteman) - self.lastScore2)
 
         return score
 
@@ -385,7 +369,7 @@ class HalmaPlayer02A:
 
     # Fungsi untuk mencari kotak yang kosong di daerah tujuan
     def cariKosong(self, node, index):
-        # index = self.index
+        index = self.index
         papan = self.papanBiner(node, index, 1, 0)
         kosong = []
         if index == 1:
@@ -408,11 +392,7 @@ class HalmaPlayer02A:
         if index == 0:
             x = (self.nkotak-1, self.nkotak-1)
         elif index == 1:
-            x = (self.nkotak-1, 0)
-        elif index == 2:
             x = (0, 0)
-        elif index == 3:
-            x = (0, self.nkotak-1)
         return x
 
     # Mengonversi papan menjadi biner 1 / 0 sehingga mudah diolah
@@ -424,10 +404,10 @@ class HalmaPlayer02A:
             for j in range(len(papan)):
                 if int(str(papan[i][j])[:1]) == giliran + 1:
                     papan_biner[i][j] = a
-                # elif int(str(papan[i][j])[:1]) == 1 - giliran + 1:
-                #     papan_biner[i][j] = b
-                else:
+                elif int(str(papan[i][j])[:1]) == 1 - giliran + 1:
                     papan_biner[i][j] = b
+                else:
+                    papan_biner[i][j] = 0
         return papan_biner
 
 # 4. FUNGSI MINIMAX + PRUNING -------------------------------------------------
@@ -439,7 +419,7 @@ class HalmaPlayer02A:
 
         if maxPlayer:
             maxEval = -9999
-            cabang = self.cariCabang(position, abs(self._ply-depth+self.index)%4, True,0)
+            cabang = self.cariCabang(position, True, True)
             childCount = 0
             for child in cabang:
                 if childCount < self._childMax:
@@ -458,7 +438,7 @@ class HalmaPlayer02A:
             return maxEval
         else:
             minEval = 9999
-            cabang = self.cariCabang(position, abs(self._ply-depth+self.index)%4, True,0)
+            cabang = self.cariCabang(position, False, True)
             childCount = 0
             for child in cabang:
                 if childCount < self._childMax:
@@ -477,7 +457,6 @@ class HalmaPlayer02A:
         if self.setup:
             self.nkotak = model.getUkuran()
             self.nbidak = model.getJumlahBidak()
-            self.Iteman = (self.index + 2)%4
             self.setup = False
 
         # indicate stages based on number of moves so far
@@ -507,10 +486,7 @@ class HalmaPlayer02A:
             # update last score
             self.lastScore = self.evalFuncTarget(self.nextStep(
                 initPos, self.pilihan[pilih][0], self.pilihan[pilih][1], self.pilihan[pilih][2], self.index), self.index)
-            self.lastScore2 = self.evalFuncTarget(self.nextStep(
-                initPos, self.pilihan[pilih][0], self.pilihan[pilih][1], self.pilihan[pilih][2], self.index), self.Iteman)
-
-            if self.lastScore >= self.nbidak / 2 or self.lastScore2 >= self.nbidak / 2:
+            if self.lastScore >= self.nbidak / 2:
                 self.stage = 4
 
             # return stuffs
@@ -519,5 +495,4 @@ class HalmaPlayer02A:
             else:
                 return [self.pilihan[pilih][0]], self.pilihan[pilih][1], self.pilihan[pilih][2]
         else:
-            print("MANDEG", self.index)
             return None, None, model.A_BERHENTI

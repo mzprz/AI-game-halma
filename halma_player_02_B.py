@@ -5,7 +5,7 @@ import gc
 import math
 
 # based on pr4
-class HalmaPlayer02:
+class HalmaPlayer02B:
     nama = "Pemain 4 Player"
     deskripsi = "Kelompok 2 (13316017 - 13316079 - 13316087)"
     nomor = 2
